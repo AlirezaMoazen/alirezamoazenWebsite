@@ -1,0 +1,1276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Trace | Alireza Moazen</title>
+  <meta name="description" content="A spatial identity map. A central core as Alireza Moazen." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-deep: #08080a;
+      --text-main: #ECECEC;
+      --text-gold: #FFD700;
+      --text-muted: rgba(236, 236, 236, 0.52);
+      --text-faint: rgba(236, 236, 236, 0.34);
+
+      --node-bg: rgba(12, 12, 14, 0.56);
+      --node-border: rgba(255, 255, 255, 0.08);
+      --node-border-hover: rgba(255, 255, 255, 0.30);
+
+      --font-serif: "Fraunces", serif;
+      --font-sans: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+
+      --hud-bg: rgba(0,0,0,0.30);
+      --hud-line: rgba(255,255,255,0.10);
+
+      --shadow-soft: 0 10px 40px rgba(0,0,0,0.24);
+      --shadow-deep: 0 18px 70px rgba(0,0,0,0.55);
+
+      --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+      --focus-ring: 0 0 0 3px rgba(255,255,255,.12), 0 0 0 1px rgba(255,255,255,.20) inset;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      width: 100%; height: 100%;
+      margin: 0; padding: 0;
+      overflow: hidden;
+      background-color: var(--bg-deep); 
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      transition: background-color 300ms ease;
+    }
+
+    /* --- BACKGROUND LAYERS --- */
+    .nebula {
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(20, 20, 40, 0.18) 0%, transparent 60%),
+        radial-gradient(circle at 80% 18%, rgba(60, 18, 90, 0.07) 0%, transparent 52%),
+        radial-gradient(circle at 16% 84%, rgba(12, 70, 80, 0.06) 0%, transparent 52%),
+        radial-gradient(circle at 30% 30%, rgba(140, 120, 255, 0.04) 0%, transparent 56%);
+      z-index: 0;
+      pointer-events: none;
+      transition: opacity 800ms ease, filter 800ms ease;
+      opacity: 0.9; 
+      filter: none;
+    }
+
+    #star-canvas {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 1;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      opacity: 0.9;
+      transition: opacity 800ms ease, filter 800ms ease;
+    }
+
+    .vignette {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      background: radial-gradient(circle at center, transparent 28%, rgba(0,0,0,0.90) 130%);
+      transition: opacity 800ms ease;
+    }
+
+    /* Warp overlay */
+    .warp {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 8;
+      opacity: 0;
+      transition: opacity 180ms ease;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06), transparent 52%),
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.04), transparent 68%);
+      filter: blur(10px);
+      mix-blend-mode: screen;
+    }
+    body.warping .warp{ opacity: 0.9; }
+
+    /* MIDDLE LAYER AESTHETIC (Layer 1) */
+    body.layer-1 { background-color: #050507; } 
+    body.layer-1 .nebula { opacity: 0.6; filter: hue-rotate(15deg) saturate(0.8); }
+    body.layer-1 .node:not(.center-node):not(.portal-node) {
+        border-color: rgba(255,255,255,0.06);
+        background: rgba(20,20,22,0.5);
+    }
+
+    /* DEEP LAYER AESTHETIC (The Void - Layer 2) */
+    body.layer-2 { background-color: #000; }
+    body.layer-2 .nebula{ opacity: 0; }
+    body.layer-2 #star-canvas{ opacity: 0.3; filter: grayscale(1); }
+    body.layer-2 .vignette{ opacity: 1; background: radial-gradient(circle at center, transparent 15%, #000 95%); }
+    
+    body.layer-2 .node:not(.center-node):not(.portal-node) {
+      background: rgba(40, 40, 40, 0.2);
+      border-color: rgba(80, 80, 80, 0.3);
+      box-shadow: none;
+      color: #888;
+    }
+    body.layer-2 .node-title { color: #aaa; }
+    body.layer-2 .node-sub { color: #666; }
+    body.layer-2 .node-kicker { color: #444; }
+    body.layer-2 .connection-line { stroke: rgba(60,60,60,0.3); }
+
+    /* --- HUD --- */
+    .hud {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      right: 18px;
+      z-index: 120;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .hud .group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      pointer-events: none;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      pointer-events: auto;
+      background: var(--hud-bg);
+      border: 1px solid var(--hud-line);
+      color: rgba(255,255,255,0.68);
+      padding: 10px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      backdrop-filter: blur(8px);
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .btn {
+      pointer-events: auto;
+      background: var(--hud-bg);
+      border: 1px solid var(--hud-line);
+      color: rgba(255,255,255,0.92);
+      padding: 10px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: background 160ms ease, border-color 160ms ease, transform 120ms ease;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .btn:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.16); }
+    .btn:active { transform: translateY(1px); }
+    .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+    /* --- WORLD --- */
+    #viewport {
+      position: fixed; inset: 0;
+      z-index: 10;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+    }
+    #viewport.is-dragging { cursor: grabbing; }
+    #viewport.locked { pointer-events: none; }
+
+    #world {
+      position: absolute;
+      top: 0; left: 0;
+      width: 5000px; height: 5000px;
+      will-change: transform;
+      transform-origin: 0 0;
+    }
+
+    /* Grid/Texture */
+    #world::before{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        radial-gradient(1px 1px at 40px 40px, rgba(255,255,255,.08), transparent 70%),
+        radial-gradient(1px 1px at 90px 90px, rgba(255,255,255,.05), transparent 70%);
+      background-size: 180px 180px;
+      opacity: 0.35;
+      pointer-events:none;
+    }
+
+    .connections {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .connection-line {
+      fill: none;
+      stroke: rgba(255,255,255,0.08);
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
+      opacity: 0.9;
+    }
+
+    /* NODES */
+    .node {
+      position: absolute;
+      background: var(--node-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--node-border);
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      z-index: 2;
+      user-select: none;
+      transition: border-color 220ms ease, background 220ms ease, transform 220ms var(--ease), box-shadow 220ms ease, opacity 0.5s ease;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.18), var(--shadow-soft);
+      overflow: hidden;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    .node::after{
+      content:"";
+      position:absolute;
+      inset:-40%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.12), transparent 55%);
+      opacity: 0.22;
+      pointer-events:none;
+      transform: translateZ(0);
+    }
+
+    /* Exclude center-node from the generic hover effect */
+    .node:not(.portal-node):not(.center-node):hover {
+      border-color: var(--node-border-hover);
+      background: rgba(18, 18, 24, 0.74);
+      z-index: 20;
+      box-shadow: 0 0 60px rgba(255,255,255,0.06), var(--shadow-deep);
+    }
+
+    .node.size-sm { width: 90px; height: 90px; border-radius: 999px; }
+    .node.size-md { width: 140px; height: 140px; border-radius: 50%; }
+    .node.size-lg { width: 180px; height: 180px; border-radius: 50%; }
+
+    .node-kicker { 
+        font-size: 9px; 
+        text-transform: uppercase; 
+        letter-spacing: 2px; 
+        color: rgba(255,255,255,0.4); 
+        margin-bottom: 6px; 
+    }
+    
+    .node-title { 
+        font-family: var(--font-serif); 
+        color: #fff;
+        font-weight: 300; 
+        line-height: 1.15; 
+        pointer-events: none; 
+    }
+    
+    .size-sm .node-title { font-size: 0.85rem; font-family: var(--font-sans); letter-spacing: 1px; }
+    .size-md .node-title { font-size: 1.1rem; }
+    .size-lg .node-title { font-size: 1.35rem; }
+
+    /* --- PORTAL NODES --- */
+    .node.portal-node {
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      border: none;
+      z-index: 15;
+      overflow: visible;
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    
+    .node.portal-node::after { display: none; }
+    
+    .node.portal-node:hover {
+      transform: translate(-50%, -50%) scale(1.1); 
+    }
+
+    .portal-inner {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      animation: pulsePortal 4s infinite ease-in-out;
+    }
+
+    .portal-warning {
+      position: absolute;
+      color: rgba(255, 255, 255, 0.5); /* Grey */
+      font-size: 14px;
+      font-family: var(--font-sans);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      filter: blur(0.5px); 
+      pointer-events: none;
+      z-index: 20;
+      white-space: nowrap;
+    }
+    
+    .portal-ring {
+      position: absolute; inset: -15px;
+      border-radius: 50%;
+      border: 1px dashed rgba(255,255,255,0.15);
+      animation: spin 20s linear infinite;
+      pointer-events: none;
+    }
+
+    /* BLACK HOLE (Down) */
+    .node.portal-down .portal-inner {
+      background: #000;
+      box-shadow: 
+        inset 0 0 40px #000,
+        0 0 0 1px rgba(255,255,255,0.1),
+        0 0 60px rgba(0,0,0,0.8);
+    }
+
+    /* WHITE HOLE (Up) */
+    .node.portal-up .portal-inner {
+      background: #fff;
+      box-shadow: 
+        inset 0 0 20px rgba(200,230,255,1),
+        0 0 10px rgba(255,255,255,0.8),
+        0 0 80px rgba(255,255,255,0.4);
+    }
+    .node.portal-up .portal-ring { border-color: rgba(60,60,60,0.5); }
+
+    @keyframes pulsePortal {
+      0%, 100% { transform: scale(0.95); }
+      50% { transform: scale(1.05); }
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    /* --- CENTER NODE --- */
+    .center-node {
+      width: auto; height: auto;
+      min-width: 140px; 
+      max-width: 240px; 
+      padding: 20px 24px; 
+      border-radius: 1000px;
+      background: rgba(225, 228, 232, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255,255,255,0.3) inset;
+      z-index: 10;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.5s ease;
+      position: relative;
+    }
+
+    .center-node h1 { 
+      font-family: var(--font-serif); 
+      font-size: 1.3rem; 
+      margin: 0; 
+      font-weight: 450; 
+      letter-spacing: -0.02em; 
+      color: #1a1a1a; 
+      transition: color 0.5s ease;
+      line-height: 1.1;
+    }
+    
+    .center-node p { 
+      margin: 4px 0 0 0; 
+      color: rgba(60, 60, 70, 0.5); 
+      font-size: 0.55rem; 
+      letter-spacing: 0.15em; 
+      text-transform: uppercase; 
+      transition: color 0.5s ease;
+      font-weight: 600;
+    }
+    
+    /* Layer 1 Styling (Middle) */
+    body.layer-1 .center-node {
+        background: rgba(255, 255, 255, 0.6);
+        border-color: rgba(255, 255, 255, 0.3);
+        min-width: 150px;
+        max-width: 200px;
+        padding: 22px 18px 28px 18px; 
+    }
+    body.layer-1 .center-node h1 { 
+        color: #111; 
+        font-weight: 500;
+        filter: blur(1.5px); 
+        font-size: 1.4rem;
+    }
+    body.layer-1 .center-node p { 
+        color: rgba(0,0,0,0.5); 
+        filter: blur(0.8px); 
+        font-size: 0.6rem;
+    }
+
+    /* The "Don't Go Deeper" Warning */
+    .center-warning {
+      display: none;
+      position: absolute;
+      bottom: 8px;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      font-size: 0.5rem;
+      color: rgba(0, 0, 0, 0.5); /* Darker for better contrast */
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      filter: blur(0.5px); 
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+    body.layer-1 .center-warning { display: block; opacity: 1; }
+
+    /* Layer 2 Styling */
+    body.layer-2 .center-node {
+      background: rgba(40, 40, 40, 0.3);
+      border-color: rgba(60, 60, 60, 0.1);
+      backdrop-filter: blur(4px);
+      box-shadow: none;
+    }
+    body.layer-2 .center-node h1 { color: rgba(150,150,150,0.5); filter: blur(0.5px); font-size: 1.2rem; }
+    body.layer-2 .center-node p { color: rgba(100,100,100,0.4); filter: blur(0.5px); }
+
+    /* Minimap */
+    #minimap {
+      position: fixed; bottom: 18px; right: 18px; width: 160px; height: 160px;
+      border: 1px solid rgba(255,255,255,0.10); border-radius: 50%;
+      background: rgba(0,0,0,0.55); z-index: 90; backdrop-filter: blur(6px);
+      overflow: hidden; display: none; pointer-events: none;
+    }
+    #minimap.open { display: block; }
+    #minimap .label{ position:absolute; left: 12px; top: 10px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.55); user-select:none; }
+    #minimap svg{ position:absolute; inset:0; }
+
+    /* Modal */
+    #modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.82); z-index: 200;
+      display: flex; align-items: center; justify-content: center; opacity: 0;
+      pointer-events: none; transition: opacity 240ms ease; backdrop-filter: blur(10px);
+    }
+    #modal.open { opacity: 1; pointer-events: auto; }
+    .modal-content {
+      max-width: 560px; width: calc(100vw - 40px); padding: 34px;
+      background: rgba(8,8,10,0.92); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 22px; position: relative; box-shadow: var(--shadow-deep);
+    }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px; cursor: pointer; color: rgba(255,255,255,0.55);
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); border-radius: 14px;
+      width: 38px; height: 38px; display:flex; align-items:center; justify-content:center;
+      font-size: 20px; transition: background 160ms ease, border-color 160ms ease;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); }
+    .modal-h { font-family: var(--font-serif); font-size: 2.0rem; margin: 0 0 16px 0; font-weight: 300; letter-spacing: -0.02em; }
+    .modal-b { line-height: 1.7; color: rgba(255,255,255,0.78); font-size: 1.02rem; }
+    .modal-b p { margin: 0 0 1em 0; }
+    .modal-b a { color: #fff; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.25); }
+
+    /* Intro */
+    #intro {
+      position: fixed; inset: 0; background: #000; z-index: 300; display: flex;
+      flex-direction: column; align-items: center; justify-content: center;
+      transition: opacity 700ms ease; text-align: center; padding: 24px;
+    }
+    .intro-t { 
+        font-family: var(--font-serif); 
+        font-size: 2.6rem; 
+        margin-bottom: 1rem; 
+        font-weight: 300; 
+        letter-spacing: -0.02em; 
+        /* Golden Gradient for Intro Only */
+        background: linear-gradient(135deg, #FFD700 0%, #DAA520 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: #FFD700; 
+    }
+    .intro-s { 
+        color: #FFD700; /* Made Intro Subtitle Gold */
+        font-size: 0.95rem; margin-bottom: 2rem; max-width: 420px; line-height: 1.6; 
+        background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .intro-btn{ 
+        background: rgba(0,0,0,0.8); 
+        color: #FFD700; /* Gold text */
+        border: 1px solid #FFD700; /* Gold border */
+        padding: 12px 24px; 
+        border-radius: 30px; 
+        cursor: pointer; 
+        font-weight: 700; 
+        letter-spacing: 0.02em; 
+        transition: all 0.3s ease;
+    }
+    .intro-btn:hover {
+        background: #FFD700;
+        color: #000;
+    }
+
+    @media (max-width: 720px){
+      .hud{ left: 12px; right: 12px; top: 12px; flex-direction: column; align-items: flex-end; pointer-events: none;}
+      .hud .group { justify-content: flex-end; }
+      #minimap{ width: 150px; height: 150px; right: 12px; bottom: 12px; }
+      .center-node{ min-width: 0; width: min(92vw, 520px); padding: 38px 34px; }
+      .center-node h1{ font-size: 1.7rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="nebula"></div>
+  <canvas id="star-canvas"></canvas>
+  <div class="vignette"></div>
+  <div class="warp" aria-hidden="true"></div>
+
+  <div id="intro">
+    <div class="intro-t">An Artwork By Alireza Moazen</div>
+    <div class="intro-s">"You can't invent a design. You recognize it, in the fourth dimension."<br>D.H. Lawrence</div>
+    <button class="intro-btn" onclick="startExp()">Experience me</button>
+  </div>
+
+  <div class="hud" role="banner">
+    <div class="group">
+      <div class="pill" id="coord">x:— y:— z:—</div>
+      <div class="pill hide-mobile" id="helpPill">Drag • Scroll to pan • Ctrl/⌘ + Wheel to zoom</div>
+    </div>
+    <div class="group">
+      <button class="btn" id="btnRecenter" type="button">Recenter</button>
+      <button class="btn" id="btnPause" type="button">Pause</button>
+      <button class="btn" id="btnLines" type="button">Lines</button>
+      <button class="btn" id="btnMap" type="button">Map on</button>
+      <button class="btn" id="btnFindMe" type="button">Find Me</button>
+      <!-- About button removed -->
+      <button class="btn" id="btnZoomOut" type="button">−</button>
+      <button class="btn" id="btnZoomIn" type="button">+</button>
+    </div>
+  </div>
+
+  <div id="viewport" aria-label="Spatial viewport">
+    <div id="world" aria-label="World map">
+      <svg class="connections" id="svg-layer"></svg>
+
+      <div class="node center-node" id="node-center" role="button" tabindex="0" aria-label="Open core">
+        <h1 id="center-title">The pattern of Alireza Moazen</h1>
+        <p id="center-kicker">ego</p>
+        <div class="center-warning">don't go deeper</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="minimap" class="open" aria-label="Minimap">
+    <div class="label">Map</div>
+    <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <clipPath id="clipCircle"><circle cx="80" cy="80" r="78" /></clipPath>
+      </defs>
+      <g clip-path="url(#clipCircle)">
+        <rect x="0" y="0" width="160" height="160" fill="transparent" />
+        <g id="mapDots"></g>
+        <rect id="viewRect" x="0" y="0" width="30" height="22" rx="7" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.20)" />
+      </g>
+      <circle cx="80" cy="80" r="78" fill="transparent" stroke="rgba(255,255,255,.12)" />
+    </svg>
+  </div>
+
+  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <div class="modal-content" role="document">
+      <button class="modal-close" id="modalClose" aria-label="Close">×</button>
+      <h2 class="modal-h" id="m-title"></h2>
+      <div class="modal-b" id="m-body"></div>
+    </div>
+  </div>
+
+  <script>
+    /* ------------------------------------------------------------------
+       DATASETS
+    ------------------------------------------------------------------ */
+    const DATA_SURFACE = [
+      { id: 'origin', title: 'Origin', kicker: 'Coordinate', size: 'sm', dist: 380, theta: 0.2, body: "Shiraz, c.2000. Ankara intervened. Hamburg persists." },
+      { id: 'research', title: 'Research Interest', kicker: 'Focus', size: 'md', dist: 480, theta: 1.2, body: "AI. Neuroengineering. Biogerontology. Neuroscience. Philosophy. Physics. Robotics." },
+      { id: 'hobbys', title: 'hobbies', kicker: 'Dopamine', size: 'sm', dist: 420, theta: 2.5, body: "Anime. Tech exploration. Scientific and philosophical literature. Games with depth. Long discussions on philosophy and science. Ping-pong. Basketball." },
+      { id: 'books', title: 'Favorite Books', kicker: 'Input', size: 'sm', dist: 550, theta: 3.5, body: "Yalom: Schopenhauer, Nietzsche, Harari: Sapiens, Homo Deus, Sienkiewicz: Quo Vadis, Freud: Moses and Monotheism" },
+      { id: 'type', title: 'My Type in Girls', kicker: 'Match', size: 'sm', dist: 600, theta: 4.8, body: "Smart. Slim.(;" },
+      { id: 'location', title: 'Current Location', kicker: 'GPS', size: 'sm', dist: 350, theta: 5.5, body: "Hamburg, Germany. 53.5488° N, 9.9872° E." },
+      { id: 'languages', title: 'Languages', kicker: 'Comms', size: 'md', dist: 700, theta: 0.8, body: "Persian, English, German. Loading: Chinese, French, Arabic." },
+      { id: 'authors', title: 'Authors', kicker: 'Mentors', size: 'sm', dist: 800, theta: 1.8, body: "Yuval Noah Harari, Friedrich Nietzsche, Arthur Schopenhauer, Irvin D. Yalom" },
+      { id: 'ideas', title: 'Ideas', kicker: 'Sparks', size: 'md', dist: 900, theta: 2.8, body: "The tera-human is the next step—urgently." },
+      { id: 'music', title: 'Music', kicker: 'Audio', size: 'sm', dist: 750, theta: 3.8, body: "STravis Scott · Parsalip · Jamule · Kendrick Lamar · Saint Levant · 21 Savage · Stromae." },
+      { id: 'games', title: 'Games', kicker: 'Sim', size: 'sm', dist: 850, theta: 4.5, body: "Detroit: Become Human · Warhammer · General · OGame" },
+      { id: 'badat', title: 'What I’m bad at', kicker: 'Bug', size: 'md', dist: 950, theta: 5.8, body: "Small talk, Sports, chilling, Staying in one lane " },
+      // Portal
+      { id: 'portal-down', type: 'portal-down', dist: 280, theta: 4.2 }
+    ];
+
+    const DATA_MIDDLE = [
+      { id: 'core', title: 'Core Beliefs', kicker: 'Axioms', size: 'lg', dist: 400, theta: 0.5, body: "Reality is one system. Engineering is the most perfect form of human creativity—an art with constraints. We don’t perceive reality as it is—only a model of it. Complexity isn’t a bug. It’s nature. Human upgrade is urgent. Human freedom is an illusion." },
+      { id: 'doubt', title: 'Doubtful Beliefs', kicker: 'Flux', size: 'md', dist: 500, theta: 1.5, body: "Synthetic consciousness · Solvable suffering · Final truth-model · Civilization chooses wisdom · Quantum mechanics" },
+      { id: 'heroes', title: 'Chosen Heroes', kicker: 'Icons', size: 'sm', dist: 600, theta: 2.5, body: "Freud · Reza Shah · Elon Musk · Nietzsche" },
+      { id: 'rejected', title: 'Rejected Ideas', kicker: 'Trash', size: 'md', dist: 700, theta: 3.5, body: "Astrology · Soul dualism · Comfort-first living · Borders define you · Nature is always “good” · Gods across religions" },
+      { id: 'lessons', title: 'Hard Lessons', kicker: 'Data', size: 'lg', dist: 800, theta: 4.5, body: "The world isn’t fair. Luck decides a lot." },
+      { id: 'counts', title: 'Loved Counts', kicker: 'Stats', size: 'sm', dist: 550, theta: 5.5, body: "2((:" },
+      { id: 'turning', title: 'Turning Points', kicker: 'Shift', size: 'md', dist: 900, theta: 0.2, body: "Gods are human constructs." },
+      { id: 'trusted', title: 'Trusted Peoples', kicker: 'Nodes', size: 'sm', dist: 850, theta: 1.2, body: "Mom, olis" },
+      { id: 'politics', title: 'Politic View', kicker: 'Stance', size: 'md', dist: 950, theta: 2.2, body: "Secular, liberal, pragmatic, Centrist" },
+      // Portals
+      { id: 'portal-down', type: 'portal-down', dist: 280, theta: 4.2 },
+      { id: 'portal-up', type: 'portal-up', dist: 280, theta: 1.0 }
+    ];
+
+    const DATA_DEEP = [
+      { id: 'dreams', title: 'Dreams', kicker: 'Hope', size: 'lg', dist: 500, theta: 0.8, body: "To solve death. To merge mind and machine. To understand the mind." },
+      { id: 'fears', title: 'Fears', kicker: 'Void', size: 'md', dist: 600, theta: 2.0, body: "Fear of Death" },
+      { id: 'loved', title: 'Loved Ones', kicker: 'Bind', size: 'sm', dist: 400, theta: 3.2, body: "Fear of never seeing, talking to, or experiencing them again." },
+      { id: 'curiosity', title: 'Curiosity', kicker: 'Fuel', size: 'lg', dist: 700, theta: 4.5, body: "Fear of never feel curiosity again." },
+      { id: 'survival', title: 'Survival Instinct', kicker: 'Root', size: 'md', dist: 800, theta: 5.8, body: "My reflexes are not controlled by Alireza Moazen." },
+      // Portal
+      { id: 'portal-up', type: 'portal-up', dist: 280, theta: 1.0 }
+    ];
+
+    const CONTENT_EXTRAS = {
+      about: { title: "About", body: "A gravitational map of identity.<br><br>The Portal node grows over time. Click it to descend." },
+      findme: { 
+        title: "Channels", 
+        body: "<p><a href='https://www.linkedin.com/in/alireza-moazen-323ab4244' target='_blank'>LinkedIn</a></p><p><a href='https://youtube.com/@alireza.moazen?si=eILlbzk-bIZ8NW8o' target='_blank'>YouTube</a></p><p><a href='https://www.researchgate.net/profile/Alireza-Moazzenjahromifard' target='_blank'>ResearchGate</a></p><p><a href='https://t.me/ThoughtHub' target='_blank'>Telegram</a></p>" 
+      }
+    };
+
+    const CONTENT_SURFACE_DICT = {};
+    DATA_SURFACE.forEach(d => { if(d.id && d.body) CONTENT_SURFACE_DICT[d.id] = { title: d.title, body: d.body }; });
+    
+    const CONTENT_MIDDLE_DICT = {};
+    DATA_MIDDLE.forEach(d => { if(d.id && d.body) CONTENT_MIDDLE_DICT[d.id] = { title: d.title, body: d.body }; });
+
+    const CONTENT_DEEP_DICT = {};
+    DATA_DEEP.forEach(d => { if(d.id && d.body) CONTENT_DEEP_DICT[d.id] = { title: d.title, body: d.body }; });
+
+    /* ------------------------------------------------------------------
+       STATE
+    ------------------------------------------------------------------ */
+    const state = {
+      drag: false, dragMoved: false, startX: 0, startY: 0,
+      cx: 0, cy: 0, scale: 1,
+      ww: 5000, wh: 5000,
+      paused: false, showLines: true, 
+      layerIndex: 0, // 0=Surface, 1=Middle, 2=Deep
+      speedFactor: 1,
+      nodes: [], lines: [],
+      layerStartTime: 0 
+    };
+
+    const viewport = document.getElementById('viewport');
+    const world = document.getElementById('world');
+    const svgLayer = document.getElementById('svg-layer');
+    const intro = document.getElementById('intro');
+    const centerNode = document.getElementById('node-center');
+    const centerTitle = document.getElementById('center-title');
+    const centerKicker = document.getElementById('center-kicker');
+    const coord = document.getElementById('coord');
+    const minimap = document.getElementById('minimap');
+    const mapDots = document.getElementById('mapDots');
+    const viewRect = document.getElementById('viewRect');
+    const modal = document.getElementById('modal');
+    const modalClose = document.getElementById('modalClose');
+    const modalBody = document.getElementById('m-body');
+
+    const btnRecenter = document.getElementById('btnRecenter');
+    const btnPause = document.getElementById('btnPause');
+    const btnLines = document.getElementById('btnLines');
+    const btnMap = document.getElementById('btnMap');
+    const btnFindMe = document.getElementById('btnFindMe');
+    const btnAbout = document.getElementById('btnAbout'); 
+    const btnZoomIn = document.getElementById('btnZoomIn');
+    const btnZoomOut = document.getElementById('btnZoomOut');
+
+    const CW = 2500; const CH = 2500;
+    const SCALE_MIN = 0.55; const SCALE_MAX = 1.65;
+    
+    // GROWTH TIMERS
+    const PORTAL_GROWTH_SURFACE = 1920000; // ~32 min (1.25x faster)
+    const PORTAL_GROWTH_MIDDLE_BLACK = 4800000;  // 80 min (2x slower)
+    const PORTAL_GROWTH_MIDDLE_WHITE = 1600000;  // ~26 min
+    const PORTAL_GROWTH_DEEP = 12000000;   // 200 min (10x slower)
+
+    let warpSpeed = 0; 
+    let warpDirection = 1; // 1 = in, -1 = out
+
+    function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+    
+    function activeContent(id){ 
+        if (CONTENT_EXTRAS[id]) return CONTENT_EXTRAS[id];
+        if(state.layerIndex === 2) return CONTENT_DEEP_DICT[id];
+        if(state.layerIndex === 1) return CONTENT_MIDDLE_DICT[id];
+        return CONTENT_SURFACE_DICT[id];
+    }
+
+    function openModal(id) {
+      const d = activeContent(id); 
+      if (!d) return;
+      document.getElementById('m-title').innerText = d.title;
+      modalBody.innerHTML = d.body;
+      modal.classList.add('open'); state.dragMoved = false;
+    }
+
+    function closeModal() { modal.classList.remove('open'); }
+
+    function renderNodes() {
+        // Clear existing
+        world.querySelectorAll('.node:not(.center-node)').forEach(el => el.remove());
+        svgLayer.innerHTML = '';
+        state.nodes = [];
+        state.lines = [];
+
+        const currentData = getLayerData();
+
+        currentData.forEach((d, idx) => {
+            const el = document.createElement('div');
+            
+            if (d.type === 'portal-down') {
+              el.className = 'node portal-node portal-down';
+              el.setAttribute('role', 'button');
+              el.innerHTML = `<div class="portal-inner"></div><div class="portal-ring"></div><div class="portal-warning">Warning</div>`;
+              el.addEventListener('pointerdown', (e) => { e.stopPropagation(); state.dragMoved = false; });
+              el.addEventListener('click', (e) => { e.stopPropagation(); goDeeper(); });
+            } 
+            else if (d.type === 'portal-up') {
+              el.className = 'node portal-node portal-up';
+              el.setAttribute('role', 'button');
+              el.innerHTML = `<div class="portal-inner"></div><div class="portal-ring"></div>`;
+              el.addEventListener('pointerdown', (e) => { e.stopPropagation(); state.dragMoved = false; });
+              el.addEventListener('click', (e) => { e.stopPropagation(); goBack(); });
+            }
+            else {
+              el.className = `node ${d.size === 'sm' ? 'size-sm' : d.size === 'md' ? 'size-md' : 'size-lg'}`;
+              el.setAttribute('role', 'button');
+              
+              let inner = '';
+              if (d.kicker) inner += `<div class="node-kicker">${d.kicker}</div>`;
+              inner += `<div class="node-title">${d.title}</div>`;
+              // Removed description body from node card
+              el.innerHTML = inner;
+              
+              el.addEventListener('pointerdown', (e) => { e.stopPropagation(); state.dragMoved = false; });
+              el.addEventListener('click', (e) => { e.stopPropagation(); openModal(d.id); });
+            }
+
+            world.appendChild(el);
+            
+            const floatOffset = Math.random() * 1000;
+
+            const obj = {
+              el,
+              id: d.id,
+              type: d.type,
+              dist: d.dist,
+              angle: d.theta, // Initial angle from data
+              baseSpeed: (1 / d.dist) * 22,
+              x: 0, y: 0,
+              hover: false,
+              index: idx,
+              floatOffset
+            };
+            state.nodes.push(obj);
+
+            if (!d.type || !d.type.startsWith('portal')) {
+              el.addEventListener('mouseenter', () => obj.hover = true);
+              el.addEventListener('mouseleave', () => obj.hover = false);
+            }
+
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('class', 'connection-line');
+            svgLayer.appendChild(line);
+            state.lines.push(line);
+        });
+        
+        buildMinimap();
+    }
+    
+    function getLayerData() {
+        if (state.layerIndex === 2) return DATA_DEEP;
+        if (state.layerIndex === 1) return DATA_MIDDLE;
+        return DATA_SURFACE;
+    }
+
+    function init() {
+      state.layerStartTime = Date.now();
+
+      centerNode.style.left = `${CW}px`;
+      centerNode.style.top = `${CH}px`;
+      centerNode.style.transform = 'translate(-50%, -50%)';
+      centerNode.addEventListener('click', () => openModal('about'));
+
+      renderNodes(); // Initial render for Surface
+
+      setupDrag();
+      setupWheelZoom();
+      minimap.classList.add('open');
+      btnMap.textContent = 'Map on';
+      centerView();
+      requestAnimationFrame(loop);
+      initStars();
+    }
+
+    function subline(id){
+      return ""; 
+    }
+
+    /* ------------------------------------------------------------------
+       LOOP
+    ------------------------------------------------------------------ */
+    function loop() {
+      if (!state.paused) {
+        const now = Date.now();
+        const age = now - state.layerStartTime;
+        
+        state.nodes.forEach((n, i) => {
+          const depthFactor = state.speedFactor;
+          let speed = n.baseSpeed * depthFactor;
+          if (n.hover) speed *= 0.08;
+          
+          n.angle += speed * 0.006;
+          
+          // FLOAT LOGIC (Increased amplitude for visual shake)
+          const floatX = Math.sin((now * 0.0015) + n.floatOffset) * 12;
+          const floatY = Math.cos((now * 0.0012) + n.floatOffset) * 12;
+          
+          n.x = CW + (Math.cos(n.angle) * n.dist) + floatX;
+          n.y = CH + (Math.sin(n.angle) * n.dist) + floatY;
+
+          let finalScale = 1;
+          let isVisible = true;
+
+          // VISIBILITY & GROWTH LOGIC
+          if (n.type === 'portal-down') {
+            // Black Hole Logic
+            if (state.layerIndex === 2) isVisible = false;
+            else {
+                let duration = (state.layerIndex === 1) ? PORTAL_GROWTH_MIDDLE_BLACK : PORTAL_GROWTH_SURFACE;
+                // Min scale 0.3 allows clicking immediately
+                // In middle layer (1), scale is 3x smaller (starts ~0.1)
+                // In surface layer (0), scale is normal (starts 0.3)
+                let startSize = (state.layerIndex === 1) ? 0.1 : 0.3;
+                finalScale = startSize + (7.9 * (1 - Math.pow(1 - clamp(age / duration, 0, 1), 3)));
+            }
+          } 
+          else if (n.type === 'portal-up') {
+             // White Hole Logic
+            if (state.layerIndex === 0) isVisible = false;
+            else {
+                let duration = (state.layerIndex === 1) ? PORTAL_GROWTH_MIDDLE_WHITE : PORTAL_GROWTH_DEEP;
+                let startSize = (state.layerIndex === 2) ? 0.08 : 0.1;
+                finalScale = startSize + (7.9 * (1 - Math.pow(1 - clamp(age / duration, 0, 1), 3)));
+            }
+          } 
+          else {
+             if (n.hover) finalScale = 1.10;
+             if (state.layerIndex >= 1) finalScale *= 0.7; // Regular nodes shrink in deeper layers
+          }
+          
+          if(n.type?.startsWith('portal') && n.el.matches(':hover')) finalScale *= 1.1;
+          
+          n.el.style.display = isVisible ? 'flex' : 'none';
+          n.el.style.left = `${n.x}px`;
+          n.el.style.top = `${n.y}px`;
+          n.el.style.transform = `translate(-50%, -50%) scale(${finalScale})`;
+          
+          // Update Lines
+          const line = state.lines[i];
+          if (state.showLines && isVisible && !n.type?.startsWith('portal')) {
+            const alphaBase = Math.max(0.05, 1 - (n.dist / 2600));
+            // Layer 0 and 1 lines are the same alpha
+            const alpha = state.layerIndex === 2 ? alphaBase * 0.3 : alphaBase; 
+            line.style.display = 'block';
+            line.setAttribute('x1', CW);
+            line.setAttribute('y1', CH);
+            line.setAttribute('x2', n.x);
+            line.setAttribute('y2', n.y);
+            line.style.stroke = `rgba(255,255,255,${alpha * 0.38})`;
+          } else {
+            line.style.display = 'none';
+          }
+          
+          // Sync Minimap Visibility
+          if(mapDots.children[i]) {
+              mapDots.children[i].style.display = isVisible ? 'block' : 'none';
+          }
+        });
+      }
+
+      updateHUD();
+      updateMinimap();
+      requestAnimationFrame(loop);
+    }
+
+    /* ------------------------------------------------------------------
+       PORTAL & WARP LOGIC
+    ------------------------------------------------------------------ */
+    function goDeeper() {
+      // 0 -> 1 -> 2
+      if (state.layerIndex < 2) transitionLayer(state.layerIndex + 1, 'in');
+    }
+
+    function goBack() {
+      // 2 -> 1 -> 0
+      if (state.layerIndex > 0) transitionLayer(state.layerIndex - 1, 'out');
+    }
+
+    function easeInOutCubic(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2; }
+
+    function animateCamera(toCx, toCy, toScale, duration = 900){
+      return new Promise((resolve) => {
+        const from = { cx: state.cx, cy: state.cy, s: state.scale };
+        const start = performance.now();
+        function step(now){
+          const t = clamp((now - start) / duration, 0, 1);
+          const e = easeInOutCubic(t);
+          state.cx = from.cx + (toCx - from.cx) * e;
+          state.cy = from.cy + (toCy - from.cy) * e;
+          state.scale = from.s + (toScale - from.s) * e;
+          updateTransform();
+          if (t < 1) requestAnimationFrame(step); else resolve();
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    async function transitionLayer(targetIndex, direction){
+      viewport.classList.add('locked');
+      document.body.classList.add('warping');
+      state.paused = true;
+      
+      // Visual Direction
+      warpDirection = (direction === 'in') ? 1 : -1;
+      warpSpeed = 100; 
+
+      // 1. Camera Move
+      let targetScale;
+      if (direction === 'in') targetScale = 2.5; 
+      else targetScale = 0.25; 
+
+      const targetCx = (window.innerWidth/2) - (CW * targetScale);
+      const targetCy = (window.innerHeight/2) - (CH * targetScale);
+      await animateCamera(targetCx, targetCy, targetScale, 400);
+
+      // 2. Switch State (Happens instantly here)
+      state.layerIndex = targetIndex;
+      state.layerStartTime = Date.now();
+      
+      // Apply correct background/aesthetic classes instantly
+      document.body.classList.remove('layer-1', 'layer-2');
+      if(targetIndex === 1) document.body.classList.add('layer-1');
+      if(targetIndex === 2) document.body.classList.add('layer-2');
+
+      // Update Text
+      if(targetIndex === 0) {
+        centerTitle.textContent = "Who is Alireza Moazen";
+        centerKicker.textContent = "ego";
+        state.speedFactor = 1;
+      } else if (targetIndex === 1) {
+        centerTitle.textContent = "Don't go deeper";
+        centerKicker.textContent = "subconscious";
+        state.speedFactor = 0.6;
+      } else {
+        centerTitle.textContent = "Why did I not kill myself?";
+        centerKicker.textContent = "THE VOID";
+        state.speedFactor = 0.28;
+      }
+
+      // RE-RENDER NODES FOR NEW LAYER
+      renderNodes();
+
+      warpSpeed = 0; 
+
+      // 3. Return Camera to normal
+      const arriveScale = (targetIndex === 0) ? 1.0 : 1.18;
+      const arriveCx = (window.innerWidth/2) - (CW * arriveScale);
+      const arriveCy = (window.innerHeight/2) - (CH * arriveScale);
+      await animateCamera(arriveCx, arriveCy, arriveScale, 1000);
+
+      state.paused = false;
+      document.body.classList.remove('warping');
+      viewport.classList.remove('locked');
+    }
+
+    /* ------------------------------------------------------------------
+       STARFIELD
+    ------------------------------------------------------------------ */
+    const canvas = document.getElementById('star-canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    const stars = [];
+    const meteors = [];
+
+    function initStars() {
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const count = reduce ? 120 : 350; 
+      for (let i = 0; i < count; i++) {
+        stars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          size: Math.random() * 1.8,
+          alpha: 0.2 + Math.random() * 0.7,
+          tw: reduce ? 0 : (Math.random() * 0.012)
+        });
+      }
+      function tick(){
+        drawStars(!reduce && !state.paused);
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function resizeCanvas(){ width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
+
+    function drawStars(animate){
+      if(warpSpeed > 0) {
+        ctx.fillStyle = "rgba(0,0,0,0.1)"; 
+        ctx.fillRect(0, 0, width, height);
+      } else {
+        ctx.clearRect(0, 0, width, height);
+      }
+      
+      let dim = 1;
+      // Stars are only dimmed in the deepest layer (Layer 2)
+      if(state.layerIndex === 2) dim = 0.1; 
+      
+      // PARALLAX OFFSET
+      const px = state.cx * 0.1;
+      const py = state.cy * 0.1;
+      
+      for (const s of stars) {
+        if (animate) { 
+            s.alpha += s.tw; 
+            if (s.alpha > 1 || s.alpha < 0.18) s.tw *= -1; 
+        }
+        
+        ctx.fillStyle = `rgba(255,255,255,${s.alpha * dim})`;
+        ctx.beginPath();
+        
+        if (warpSpeed > 0) {
+            const len = s.size * warpSpeed;
+            const cx = width/2; const cy = height/2;
+            const angle = Math.atan2(s.y - cy, s.x - cx);
+            
+            ctx.moveTo(s.x, s.y);
+            
+            let x2, y2;
+            if (warpDirection === 1) { // Deeper (Zoom In) - Stars streak OUT
+               x2 = s.x + Math.cos(angle)*len;
+               y2 = s.y + Math.sin(angle)*len;
+               s.x += Math.cos(angle) * warpSpeed * 2;
+               s.y += Math.sin(angle) * warpSpeed * 2;
+            } else { // Back (Zoom Out) - Stars streak IN
+               x2 = s.x - Math.cos(angle)*len;
+               y2 = s.y - Math.sin(angle)*len;
+               s.x -= Math.cos(angle) * warpSpeed * 2;
+               s.y -= Math.sin(angle) * warpSpeed * 2;
+            }
+
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = ctx.fillStyle;
+            ctx.lineWidth = s.size;
+            ctx.stroke();
+            
+            // Warp Respawn (Inward)
+            if(warpDirection === -1) {
+                 const dist = Math.hypot(s.x - width/2, s.y - height/2);
+                 if(dist < 50) {
+                     if(Math.random() > 0.5) { s.x = Math.random() > 0.5 ? 0 : width; s.y = Math.random() * height; }
+                     else { s.x = Math.random() * width; s.y = Math.random() > 0.5 ? 0 : height; }
+                 }
+            } else {
+                 if(s.x < 0 || s.x > width || s.y < 0 || s.y > height) { s.x = Math.random() * width; s.y = Math.random() * height; }
+            }
+        } else { 
+            // Apply Parallax Here
+            let sx = (s.x + px) % width;
+            let sy = (s.y + py) % height;
+            if (sx < 0) sx += width;
+            if (sy < 0) sy += height;
+            
+            ctx.arc(sx, sy, s.size, 0, Math.PI * 2); 
+            ctx.fill(); 
+        }
+      }
+
+      // Meteors
+      if (animate && warpSpeed === 0 && state.layerIndex < 2) {
+          const meteorChance = 0.08; 
+          if (Math.random() < meteorChance) {
+            meteors.push({
+              x: Math.random() * width,
+              y: Math.random() * height * 0.5,
+              len: 120 + Math.random() * 140,
+              speed: 14 + Math.random() * 10,
+              angle: Math.PI / 4 + (Math.random() * 0.18),
+              opacity: 1
+            });
+          }
+    
+          for (let i = meteors.length - 1; i >= 0; i--) {
+            const m = meteors[i];
+            m.x += Math.cos(m.angle) * m.speed;
+            m.y += Math.sin(m.angle) * m.speed;
+            m.opacity -= 0.016;
+            if (m.opacity <= 0) { meteors.splice(i, 1); continue; }
+            const gx = m.x - Math.cos(m.angle) * m.len;
+            const gy = m.y - Math.sin(m.angle) * m.len;
+            const gradient = ctx.createLinearGradient(m.x, m.y, gx, gy);
+            gradient.addColorStop(0, `rgba(255,255,255,${m.opacity * dim})`);
+            gradient.addColorStop(1, `rgba(255,255,255,0)`);
+            ctx.lineWidth = 1.8;
+            ctx.strokeStyle = gradient;
+            ctx.beginPath();
+            ctx.moveTo(m.x, m.y);
+            ctx.lineTo(gx, gy);
+            ctx.stroke();
+          }
+      }
+    }
+
+    /* ------------------------------------------------------------------
+       COMMON UI
+    ------------------------------------------------------------------ */
+    function startExp() {
+      intro.style.opacity = 0;
+      setTimeout(() => intro.style.display = 'none', 700);
+      state.layerStartTime = Date.now(); 
+    }
+
+    function centerView() {
+      state.cx = (window.innerWidth / 2) - (CW * state.scale);
+      state.cy = (window.innerHeight / 2) - (CH * state.scale);
+      updateTransform();
+    }
+
+    function updateTransform() {
+      const pad = 2200;
+      const wScaled = state.ww * state.scale;
+      const hScaled = state.wh * state.scale;
+      if (state.cx > pad) state.cx = pad; if (state.cy > pad) state.cy = pad;
+      if (state.cx < window.innerWidth - wScaled - pad) state.cx = window.innerWidth - wScaled - pad;
+      if (state.cy < window.innerHeight - hScaled - pad) state.cy = window.innerHeight - hScaled - pad;
+      world.style.transform = `translate(${state.cx}px, ${state.cy}px) scale(${state.scale})`;
+    }
+
+    function updateHUD(){
+      const cx = Math.round(((-state.cx) + window.innerWidth/2) / state.scale);
+      const cy = Math.round(((-state.cy) + window.innerHeight/2) / state.scale);
+      coord.textContent = `x:${cx} y:${cy} z:${state.scale.toFixed(2)}`;
+    }
+
+    function setupDrag() {
+      viewport.addEventListener('pointerdown', e => { 
+          if (modal.classList.contains('open')) return; 
+          state.drag = true; 
+          state.dragMoved = false; 
+          state.startX = e.clientX - state.cx; 
+          state.startY = e.clientY - state.cy; 
+          viewport.classList.add('is-dragging'); 
+          viewport.setPointerCapture(e.pointerId); 
+      });
+      viewport.addEventListener('pointermove', e => { 
+          if (!state.drag) return; 
+          const nx = e.clientX - state.startX; 
+          const ny = e.clientY - state.startY; 
+          if (!state.dragMoved && Math.hypot(nx - state.cx, ny - state.cy) >= 10) state.dragMoved = true; 
+          state.cx = nx; state.cy = ny; updateTransform(); 
+      });
+      viewport.addEventListener('pointerup', (e) => { 
+          state.drag = false; 
+          viewport.classList.remove('is-dragging');
+          viewport.releasePointerCapture(e.pointerId); 
+      });
+    }
+
+    function setupWheelZoom(){
+      viewport.addEventListener('wheel', (e) => {
+        if (modal.classList.contains('open')) return;
+        if (e.ctrlKey || e.metaKey) { e.preventDefault(); const factor = e.deltaY < 0 ? 1.08 : 0.92; zoomTo(state.scale * factor, e.clientX, e.clientY); return; }
+        state.cx -= e.deltaX; state.cy -= e.deltaY; updateTransform();
+      }, { passive: false });
+    }
+
+    function zoomTo(nextScale, anchorX = window.innerWidth / 2, anchorY = window.innerHeight / 2){
+      const s0 = state.scale; const s1 = clamp(nextScale, SCALE_MIN, SCALE_MAX); if (s0 === s1) return;
+      const wx = (anchorX - state.cx) / s0; const wy = (anchorY - state.cy) / s0;
+      state.scale = s1; state.cx = anchorX - wx * state.scale; state.cy = anchorY - wy * state.scale;
+      updateTransform();
+    }
+
+    function buildMinimap(){
+      mapDots.innerHTML = '';
+      const mapW = 160; const mapH = 160;
+      function toMap(x, y){ return { mx: (x / state.ww) * mapW, my: (y / state.wh) * mapH }; }
+      const c = toMap(CW, CH);
+      const cDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      cDot.setAttribute('cx', c.mx); cDot.setAttribute('cy', c.my); cDot.setAttribute('r', 3.5);
+      cDot.setAttribute('fill', 'rgba(255,255,255,.55)'); mapDots.appendChild(cDot);
+      state.nodes.forEach((n) => {
+        const p = toMap(CW + Math.cos(n.angle) * n.dist, CH + Math.sin(n.angle) * n.dist);
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', p.mx); dot.setAttribute('cy', p.my); dot.setAttribute('r', n.type?.startsWith('portal') ? 3.5 : 2.4);
+        dot.setAttribute('fill', n.type?.startsWith('portal') ? '#fff' : 'rgba(255,255,255,.22)'); mapDots.appendChild(dot);
+      });
+    }
+
+    function updateMinimap(){
+      if (!minimap.classList.contains('open')) return;
+      const mapW = 160; const mapH = 160;
+      const viewW = (window.innerWidth / state.scale / state.ww) * mapW;
+      const viewH = (window.innerHeight / state.scale / state.wh) * mapH;
+      const viewX = ((-state.cx) / state.scale / state.ww) * mapW;
+      const viewY = ((-state.cy) / state.scale / state.wh) * mapH;
+      viewRect.setAttribute('width', clamp(viewW, 12, mapW)); viewRect.setAttribute('height', clamp(viewH, 10, mapH));
+      viewRect.setAttribute('x', clamp(viewX, 0, mapW - viewW)); viewRect.setAttribute('y', clamp(viewY, 0, mapH - viewH));
+    }
+
+    function openModal(id) {
+      const d = activeContent(id); 
+      if (!d) return;
+      document.getElementById('m-title').innerText = d.title;
+      modalBody.innerHTML = d.body;
+      modal.classList.add('open'); state.dragMoved = false;
+    }
+    function closeModal() { modal.classList.remove('open'); }
+    modalClose.addEventListener('click', closeModal); modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+    btnRecenter.addEventListener('click', centerView);
+    btnPause.addEventListener('click', () => { state.paused = !state.paused; btnPause.textContent = state.paused ? 'Play' : 'Pause'; });
+    btnLines.addEventListener('click', () => { state.showLines = !state.showLines; btnLines.textContent = state.showLines ? 'Lines' : 'Lines off'; });
+    btnMap.addEventListener('click', () => { minimap.classList.toggle('open'); btnMap.textContent = minimap.classList.contains('open') ? 'Map on' : 'Map off'; buildMinimap(); });
+    btnFindMe.addEventListener('click', () => openModal('findme'));
+    // Removed btnAbout listener
+    btnZoomIn.addEventListener('click', () => zoomTo(state.scale * 1.08));
+    btnZoomOut.addEventListener('click', () => zoomTo(state.scale * 0.92));
+
+    window.addEventListener('resize', () => { updateTransform(); if (minimap.classList.contains('open')) buildMinimap(); });
+
+    init();
+  </script>
+</body>
+</html>
