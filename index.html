@@ -529,9 +529,18 @@
         color: #000;
     }
 
+    .only-mobile { display: none; }
+
     @media (max-width: 720px){
       .hud{ left: 12px; right: 12px; top: 12px; flex-direction: column; align-items: flex-end; pointer-events: none;}
-      .hud .group { justify-content: flex-end; }
+      .hud .group { justify-content: flex-end; flex-wrap: nowrap; }
+      .hud .group:first-child { display: none; }          /* coords + help text */
+      .only-mobile { display: inline-block; }
+      .btn { padding: 9px 11px; }
+      /* secondary controls live behind the ⋯ button */
+      #btnPause, #btnLines, #btnMap { display: none; }
+      .hud.more-open .group { flex-wrap: wrap; }
+      .hud.more-open #btnPause, .hud.more-open #btnLines, .hud.more-open #btnMap { display: inline-block; }
       #minimap{ width: 150px; height: 150px; right: 12px; bottom: 12px; }
       .center-node{ min-width: 0; width: min(92vw, 520px); padding: 38px 34px; }
       .center-node h1{ font-size: 1.7rem; }
@@ -565,6 +574,7 @@
       <!-- About button removed -->
       <button class="btn" id="btnZoomOut" type="button">−</button>
       <button class="btn" id="btnZoomIn" type="button">+</button>
+      <button class="btn only-mobile" id="btnMore" type="button" aria-label="More controls">⋯</button>
     </div>
   </div>
 
@@ -612,7 +622,6 @@
       { id: 'research', title: 'Research Interest', kicker: 'Focus', size: 'md', dist: 480, theta: 1.2, body: "AI. Neuroengineering. Biogerontology. Neuroscience. Philosophy. Physics. Robotics." },
       { id: 'hobbys', title: 'hobbies', kicker: 'Dopamine', size: 'sm', dist: 420, theta: 2.5, body: "Anime. Tech exploration. Scientific and philosophical literature. Games with depth. Long discussions on philosophy and science. Ping-pong. Basketball." },
       { id: 'books', title: 'Favorite Books', kicker: 'Input', size: 'sm', dist: 550, theta: 3.5, body: "Yalom: Schopenhauer, Nietzsche, Harari: Sapiens, Homo Deus, Sienkiewicz: Quo Vadis, Freud: Moses and Monotheism" },
-      { id: 'type', title: 'My Type in Girls', kicker: 'Match', size: 'sm', dist: 600, theta: 4.8, body: "Smart. Slim.(;" },
       { id: 'location', title: 'Current Location', kicker: 'GPS', size: 'sm', dist: 350, theta: 5.5, body: "Hamburg, Germany. 53.5488° N, 9.9872° E." },
       { id: 'languages', title: 'Languages', kicker: 'Comms', size: 'md', dist: 700, theta: 0.8, body: "Persian, English, German. Loading: Chinese, French, Arabic." },
       { id: 'authors', title: 'Authors', kicker: 'Mentors', size: 'sm', dist: 800, theta: 1.8, body: "Yuval Noah Harari, Friedrich Nietzsche, Arthur Schopenhauer, Irvin D. Yalom" },
@@ -705,7 +714,7 @@
     const btnZoomOut = document.getElementById('btnZoomOut');
 
     const CW = 2500; const CH = 2500;
-    const SCALE_MIN = 0.55; const SCALE_MAX = 1.65;
+    const SCALE_MIN = 0.28; const SCALE_MAX = 1.65;
     
     // GROWTH TIMERS
     const PORTAL_GROWTH_SURFACE = 1920000; // ~32 min (1.25x faster)
@@ -717,6 +726,20 @@
     let warpDirection = 1; // 1 = in, -1 = out
 
     function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+    // Mobile: pull the ring closer to the core so it fits a phone screen
+    function isMobile(){ return window.innerWidth < 600; }
+    function distMult(){ return isMobile() ? 0.45 : 1; }
+
+    // Zoom level at which every node of the current layer is on screen
+    function fitScale(){
+      const maxDist = Math.max(...getLayerData().map(d => d.dist * distMult()), 300);
+      const nodeR = 90;                       // half of the largest node
+      const margin = isMobile() ? 80 : 150;   // room for the HUD / minimap
+      const half = Math.min(window.innerWidth, window.innerHeight) / 2 - margin;
+      const floor = isMobile() ? 0.42 : SCALE_MIN; // keep labels readable on phones
+      return clamp(half / (maxDist + nodeR), floor, 1);
+    }
     
     function activeContent(id){ 
         if (CONTENT_EXTRAS[id]) return CONTENT_EXTRAS[id];
@@ -783,7 +806,7 @@
               el,
               id: d.id,
               type: d.type,
-              dist: d.dist,
+              dist: d.type ? d.dist : d.dist * distMult(), // portals stay clear of the core
               angle: d.theta, // Initial angle from data
               baseSpeed: (1 / d.dist) * 22,
               x: 0, y: 0,
@@ -1003,7 +1026,7 @@
       warpSpeed = 0; 
 
       // 3. Return Camera to normal
-      const arriveScale = (targetIndex === 0) ? 1.0 : 1.18;
+      const arriveScale = fitScale();
       const arriveCx = (window.innerWidth/2) - (CW * arriveScale);
       const arriveCy = (window.innerHeight/2) - (CH * arriveScale);
       await animateCamera(arriveCx, arriveCy, arriveScale, 1000);
@@ -1162,6 +1185,7 @@
     }
 
     function centerView() {
+      state.scale = fitScale();
       state.cx = (window.innerWidth / 2) - (CW * state.scale);
       state.cy = (window.innerHeight / 2) - (CH * state.scale);
       updateTransform();
@@ -1260,6 +1284,7 @@
     modalClose.addEventListener('click', closeModal); modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
     btnRecenter.addEventListener('click', centerView);
+    document.getElementById('btnMore').addEventListener('click', () => document.querySelector('.hud').classList.toggle('more-open'));
     btnPause.addEventListener('click', () => { state.paused = !state.paused; btnPause.textContent = state.paused ? 'Play' : 'Pause'; });
     btnLines.addEventListener('click', () => { state.showLines = !state.showLines; btnLines.textContent = state.showLines ? 'Lines' : 'Lines off'; });
     btnMap.addEventListener('click', () => { minimap.classList.toggle('open'); btnMap.textContent = minimap.classList.contains('open') ? 'Map on' : 'Map off'; buildMinimap(); });
@@ -1268,7 +1293,11 @@
     btnZoomIn.addEventListener('click', () => zoomTo(state.scale * 1.08));
     btnZoomOut.addEventListener('click', () => zoomTo(state.scale * 0.92));
 
-    window.addEventListener('resize', () => { updateTransform(); if (minimap.classList.contains('open')) buildMinimap(); });
+    let wasMobile = isMobile();
+    window.addEventListener('resize', () => {
+      if (isMobile() !== wasMobile) { wasMobile = isMobile(); renderNodes(); centerView(); }
+      updateTransform(); if (minimap.classList.contains('open')) buildMinimap();
+    });
 
     init();
   </script>
