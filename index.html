@@ -93,14 +93,23 @@
       pointer-events: none;
       z-index: 8;
       opacity: 0;
-      transition: opacity 180ms ease;
+      transition: opacity 180ms ease, background 200ms ease;
       background:
-        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06), transparent 52%),
-        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.04), transparent 68%);
+        radial-gradient(circle at 50% 50%, var(--warp-tint, rgba(255,255,255,0.06)), transparent 52%),
+        radial-gradient(circle at 50% 50%, var(--warp-tint-2, rgba(255,255,255,0.04)), transparent 68%);
       filter: blur(10px);
       mix-blend-mode: screen;
     }
     body.warping .warp{ opacity: 0.9; }
+
+    /* Ambient mood: vignette breathes slightly, deepening with each layer */
+    body.layer-1 .vignette { animation: vignetteBreathe 6s ease-in-out infinite; }
+    body.layer-2 .vignette { animation: vignetteBreatheDeep 5s ease-in-out infinite; }
+    @keyframes vignetteBreathe { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
+    @keyframes vignetteBreatheDeep {
+      0%, 100% { opacity: 0.92; background: radial-gradient(circle at center, transparent 15%, #000 95%); }
+      50% { opacity: 1; background: radial-gradient(circle at center, transparent 10%, rgba(20,0,0,0.4) 55%, #000 95%); }
+    }
 
     /* MIDDLE LAYER AESTHETIC (Layer 1) */
     body.layer-1 { background-color: #050507; } 
@@ -125,7 +134,7 @@
     body.layer-2 .node-title { color: #aaa; }
     body.layer-2 .node-sub { color: #666; }
     body.layer-2 .node-kicker { color: #444; }
-    body.layer-2 .connection-line { stroke: rgba(60,60,60,0.3); }
+    /* line color for layer-2 now set once, below, alongside the flow animation */
 
     /* --- HUD --- */
     .hud {
@@ -223,11 +232,30 @@
 
     .connection-line {
       fill: none;
-      stroke: rgba(255,255,255,0.08);
+      stroke: rgba(255,255,255,0.10);
       stroke-width: 1;
+      stroke-dasharray: 1.5 15;
       vector-effect: non-scaling-stroke;
       opacity: 0.9;
+      animation: flowLine 3.2s linear infinite;
     }
+    @keyframes flowLine { to { stroke-dashoffset: -33; } }
+    body.layer-1 .connection-line { stroke: rgba(150,170,255,0.16); }
+    body.layer-2 .connection-line { stroke: rgba(255,106,43,0.14); animation-duration: 5.5s; }
+
+    /* Click-pulse fx (screen-space, used on every node/portal click) */
+    #fxLayer { position: fixed; inset: 0; z-index: 150; pointer-events: none; }
+    .fx-ring {
+      position: absolute; width: 8px; height: 8px; border-radius: 50%;
+      border: 1.5px solid; transform: translate(-50%, -50%);
+      animation: fxRingExpand 650ms cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+    @keyframes fxRingExpand { from { width: 8px; height: 8px; opacity: 0.85; } to { width: 160px; height: 160px; opacity: 0; } }
+    .fx-spark {
+      position: absolute; width: 3px; height: 3px; border-radius: 50%;
+      transform: translate(-50%, -50%); animation: fxSparkOut var(--dur, 500ms) ease-out forwards;
+    }
+    @keyframes fxSparkOut { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))); opacity: 0; } }
 
     /* NODES */
     .node {
@@ -379,11 +407,11 @@
     @keyframes txFlicker { 0%, 100% { opacity: 0.9; } 45% { opacity: 0.55; } 55% { opacity: 1; } 80% { opacity: 0.65; } }
 
     /* --- TRANSMISSION LAYER: a chamber under the void --- */
-    #txFlash {
+    #screenFlash {
       position: fixed; inset: 0; z-index: 265; background: #000;
       opacity: 0; pointer-events: none; transition: opacity 220ms ease;
     }
-    #txFlash.flash { opacity: 1; transition: opacity 50ms ease; }
+    #screenFlash.flash { opacity: 1; transition: opacity 50ms ease; }
 
     #transmission {
       position: fixed; inset: 0; z-index: 260;
@@ -649,9 +677,9 @@
       .only-mobile { display: inline-block; }
       .btn { padding: 9px 11px; }
       /* secondary controls live behind the ⋯ button */
-      #btnPause, #btnLines, #btnMap { display: none; }
+      #btnPause, #btnLines, #btnMap, #btnSound { display: none; }
       .hud.more-open .group { flex-wrap: wrap; }
-      .hud.more-open #btnPause, .hud.more-open #btnLines, .hud.more-open #btnMap { display: inline-block; }
+      .hud.more-open #btnPause, .hud.more-open #btnLines, .hud.more-open #btnMap, .hud.more-open #btnSound { display: inline-block; }
       #minimap{ width: 150px; height: 150px; right: 12px; bottom: 12px; }
       .center-node{ min-width: 0; width: min(92vw, 520px); padding: 38px 34px; }
       .center-node h1{ font-size: 1.7rem; }
@@ -660,6 +688,7 @@
 </head>
 <body>
 
+  <div id="fxLayer" aria-hidden="true"></div>
   <div class="nebula"></div>
   <canvas id="star-canvas"></canvas>
   <div class="vignette"></div>
@@ -681,6 +710,7 @@
       <button class="btn" id="btnPause" type="button">Pause</button>
       <button class="btn" id="btnLines" type="button">Lines</button>
       <button class="btn" id="btnMap" type="button">Map on</button>
+      <button class="btn" id="btnSound" type="button" aria-label="Toggle ambient sound">Sound off</button>
       <button class="btn" id="btnFindMe" type="button">Find Me</button>
       <!-- About button removed -->
       <button class="btn" id="btnZoomOut" type="button">−</button>
@@ -724,7 +754,7 @@
     </div>
   </div>
 
-  <div id="txFlash" aria-hidden="true"></div>
+  <div id="screenFlash" aria-hidden="true"></div>
   <div id="transmission" role="dialog" aria-modal="true" aria-labelledby="tx-title" aria-hidden="true">
     <canvas id="txEmbers" aria-hidden="true"></canvas>
     <button class="tx-close" id="txClose" aria-label="Return to the void">×</button>
@@ -851,7 +881,8 @@
     const modal = document.getElementById('modal');
     const modalClose = document.getElementById('modalClose');
     const transmission = document.getElementById('transmission');
-    const txFlash = document.getElementById('txFlash');
+    const screenFlashEl = document.getElementById('screenFlash');
+    function fireScreenFlash(ms) { screenFlashEl.classList.add('flash'); setTimeout(() => screenFlashEl.classList.remove('flash'), ms || 80); }
     const txClose = document.getElementById('txClose');
     const txRoots = document.getElementById('txRoots');
     const txCtx = txRoots.getContext('2d');
@@ -870,6 +901,7 @@
     const btnPause = document.getElementById('btnPause');
     const btnLines = document.getElementById('btnLines');
     const btnMap = document.getElementById('btnMap');
+    const btnSound = document.getElementById('btnSound');
     const btnFindMe = document.getElementById('btnFindMe');
     const btnAbout = document.getElementById('btnAbout'); 
     const btnZoomIn = document.getElementById('btnZoomIn');
@@ -888,6 +920,37 @@
     let warpDirection = 1; // 1 = in, -1 = out
 
     function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const LAYER_ACCENT = ['#FFD700', '#8FA8FF', '#FF6A2B']; // surface / subconscious / void
+    function layerAccent(idx){ return LAYER_ACCENT[idx ?? state.layerIndex] || LAYER_ACCENT[0]; }
+    function hexToRgba(hex, a) {
+      const n = parseInt(hex.slice(1), 16);
+      return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+    }
+
+    const fxLayer = document.getElementById('fxLayer');
+    function spawnClickPulse(x, y, color) {
+      if (reduceMotion) return;
+      const ring = document.createElement('div');
+      ring.className = 'fx-ring';
+      ring.style.left = x + 'px'; ring.style.top = y + 'px'; ring.style.borderColor = color;
+      fxLayer.appendChild(ring);
+      ring.addEventListener('animationend', () => ring.remove());
+      const n = 6;
+      for (let i = 0; i < n; i++) {
+        const spark = document.createElement('div');
+        spark.className = 'fx-spark';
+        const ang = (Math.PI * 2 * i) / n + Math.random() * 0.6;
+        const dist = 26 + Math.random() * 28;
+        spark.style.left = x + 'px'; spark.style.top = y + 'px'; spark.style.background = color;
+        spark.style.setProperty('--dx', Math.cos(ang) * dist + 'px');
+        spark.style.setProperty('--dy', Math.sin(ang) * dist + 'px');
+        spark.style.setProperty('--dur', (380 + Math.random() * 280) + 'ms');
+        fxLayer.appendChild(spark);
+        spark.addEventListener('animationend', () => spark.remove());
+      }
+    }
 
     // Mobile: pull the ring closer to the core so it fits a phone screen
     function isMobile(){ return window.innerWidth < 600; }
@@ -937,21 +1000,21 @@
               el.setAttribute('role', 'button');
               el.innerHTML = `<div class="portal-inner"></div><div class="portal-ring"></div><div class="portal-warning">Warning</div>`;
               el.addEventListener('pointerdown', (e) => { e.stopPropagation(); state.dragMoved = false; });
-              el.addEventListener('click', (e) => { e.stopPropagation(); goDeeper(); });
+              el.addEventListener('click', (e) => { e.stopPropagation(); if (!state.dragMoved) { spawnClickPulse(e.clientX, e.clientY, layerAccent(state.layerIndex + 1)); goDeeper(); } });
             } 
             else if (d.type === 'portal-up') {
               el.className = 'node portal-node portal-up';
               el.setAttribute('role', 'button');
               el.innerHTML = `<div class="portal-inner"></div><div class="portal-ring"></div>`;
               el.addEventListener('pointerdown', (e) => { e.stopPropagation(); state.dragMoved = false; });
-              el.addEventListener('click', (e) => { e.stopPropagation(); goBack(); });
+              el.addEventListener('click', (e) => { e.stopPropagation(); if (!state.dragMoved) { spawnClickPulse(e.clientX, e.clientY, layerAccent(state.layerIndex - 1)); goBack(); } });
             }
             else if (d.type === 'portal-transmission') {
               el.className = 'node portal-node portal-transmission';
               el.setAttribute('role', 'button');
               el.innerHTML = `<div class="portal-inner"></div><div class="portal-ring"></div><div class="portal-warning">Signal</div>`;
               el.addEventListener('pointerdown', (e) => { e.stopPropagation(); state.dragMoved = false; });
-              el.addEventListener('click', (e) => { e.stopPropagation(); if (!state.dragMoved) openTransmission(); });
+              el.addEventListener('click', (e) => { e.stopPropagation(); if (!state.dragMoved) { spawnClickPulse(e.clientX, e.clientY, '#FF6A2B'); openTransmission(); } });
             }
             else {
               el.className = `node ${d.size === 'sm' ? 'size-sm' : d.size === 'md' ? 'size-md' : 'size-lg'}`;
@@ -964,11 +1027,22 @@
               el.innerHTML = inner;
               
               el.addEventListener('pointerdown', (e) => { e.stopPropagation(); state.dragMoved = false; });
-              el.addEventListener('click', (e) => { e.stopPropagation(); openModal(d.id); });
+              el.addEventListener('click', (e) => { e.stopPropagation(); if (!state.dragMoved) { spawnClickPulse(e.clientX, e.clientY, layerAccent()); openModal(d.id); } });
             }
 
             world.appendChild(el);
-            
+
+            if (!reduceMotion) {
+              el.style.opacity = '0';
+              el.style.transform = 'translate(-50%, -50%) scale(0.15)';
+              el.style.transition = 'transform 640ms cubic-bezier(0.34,1.56,0.64,1), opacity 640ms ease';
+              const revealDelay = Math.min(idx * 40, 480);
+              setTimeout(() => {
+                el.style.opacity = '';
+                setTimeout(() => { el.style.transition = ''; }, 720);
+              }, revealDelay);
+            }
+
             const floatOffset = Math.random() * 1000;
 
             const obj = {
@@ -1151,7 +1225,12 @@
       viewport.classList.add('locked');
       document.body.classList.add('warping');
       state.paused = true;
-      
+
+      // Tint the warp glow toward the layer we're heading into
+      const tint = layerAccent(targetIndex);
+      document.documentElement.style.setProperty('--warp-tint', hexToRgba(tint, 0.16));
+      document.documentElement.style.setProperty('--warp-tint-2', hexToRgba(tint, 0.10));
+
       // Visual Direction
       warpDirection = (direction === 'in') ? 1 : -1;
       warpSpeed = 100; 
@@ -1164,6 +1243,11 @@
       const targetCx = (window.innerWidth/2) - (CW * targetScale);
       const targetCy = (window.innerHeight/2) - (CH * targetScale);
       await animateCamera(targetCx, targetCy, targetScale, 400);
+
+      // Cut to the new dimension: a beat of black, then a burst of light
+      fireScreenFlash(90);
+      spawnClickPulse(window.innerWidth / 2, window.innerHeight / 2, tint);
+      setLayerAudio(targetIndex);
 
       // 2. Switch State (Happens instantly here)
       state.layerIndex = targetIndex;
@@ -1453,6 +1537,100 @@
     modalClose.addEventListener('click', closeModal); modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
     /* ------------------------------------------------------------------
+       AMBIENT AUDIO: a procedural mood-bed that shifts with depth.
+       Muted by default (autoplay policy + courtesy) - the Sound button
+       is the only thing that ever starts it, from a real user gesture.
+    ------------------------------------------------------------------ */
+    let audioCtx = null, masterGain = null, layerGains = [], noiseGain = null, soundOn = false;
+
+    function buildAudioGraph() {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0;
+      masterGain.connect(audioCtx.destination);
+
+      // surface: calm, warm triad. subconscious: lower, faint beat. void: near-sub-bass, dissonant.
+      const specs = [
+        { freqs: [130.81, 196.00, 261.63], detune: [0, 0, 3],  lfoHz: 0.12, filter: 1400, vol: 0.05 },
+        { freqs: [98.00, 116.54, 155.56],  detune: [0, -6, 5], lfoHz: 0.08, filter: 900,  vol: 0.045 },
+        { freqs: [55.00, 58.27],           detune: [0, 8],     lfoHz: 0.05, filter: 500,  vol: 0.05 }
+      ];
+
+      layerGains = specs.map((spec) => {
+        const g = audioCtx.createGain();
+        g.gain.value = 0;
+        g.connect(masterGain);
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass'; filter.frequency.value = spec.filter;
+        filter.connect(g);
+        const lfoGain = audioCtx.createGain(); lfoGain.gain.value = spec.vol * 0.4;
+        const lfo = audioCtx.createOscillator(); lfo.frequency.value = spec.lfoHz;
+        lfo.connect(lfoGain); lfoGain.connect(g.gain); lfo.start();
+        spec.freqs.forEach((f, j) => {
+          const osc = audioCtx.createOscillator();
+          osc.type = 'sine'; osc.frequency.value = f; osc.detune.value = spec.detune[j] || 0;
+          osc.connect(filter); osc.start();
+        });
+        return g;
+      });
+
+      // shared filtered-noise bed: Void unease + Transmission static
+      const bufferSize = 2 * audioCtx.sampleRate;
+      const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      const noiseSrc = audioCtx.createBufferSource();
+      noiseSrc.buffer = noiseBuffer; noiseSrc.loop = true;
+      const noiseFilter = audioCtx.createBiquadFilter();
+      noiseFilter.type = 'bandpass'; noiseFilter.frequency.value = 800; noiseFilter.Q.value = 0.6;
+      noiseGain = audioCtx.createGain(); noiseGain.gain.value = 0;
+      noiseSrc.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(masterGain);
+      noiseSrc.start();
+
+      setLayerAudio(state.layerIndex, true);
+    }
+
+    function setLayerAudio(idx, instant) {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const dur = instant ? 0.05 : 1.4;
+      const vols = [0.05, 0.045, 0.05];
+      layerGains.forEach((g, i) => {
+        g.gain.cancelScheduledValues(now);
+        g.gain.setValueAtTime(g.gain.value, now);
+        g.gain.linearRampToValueAtTime(i === idx ? vols[i] : 0, now + dur);
+      });
+      noiseGain.gain.cancelScheduledValues(now);
+      noiseGain.gain.setValueAtTime(noiseGain.gain.value, now);
+      noiseGain.gain.linearRampToValueAtTime(idx === 2 ? 0.012 : 0, now + dur);
+    }
+
+    function setTransmissionAudio(open) {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      layerGains[2].gain.cancelScheduledValues(now);
+      layerGains[2].gain.setValueAtTime(layerGains[2].gain.value, now);
+      layerGains[2].gain.linearRampToValueAtTime(open ? 0.02 : 0.05, now + 0.8);
+      noiseGain.gain.cancelScheduledValues(now);
+      noiseGain.gain.setValueAtTime(noiseGain.gain.value, now);
+      noiseGain.gain.linearRampToValueAtTime(open ? 0.022 : (state.layerIndex === 2 ? 0.012 : 0), now + 0.8);
+    }
+
+    function toggleSound() {
+      soundOn = !soundOn;
+      if (soundOn && !audioCtx) buildAudioGraph();
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      if (masterGain) {
+        const now = audioCtx.currentTime;
+        masterGain.gain.cancelScheduledValues(now);
+        masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+        masterGain.gain.linearRampToValueAtTime(soundOn ? 1 : 0, now + 0.6);
+      }
+      btnSound.textContent = soundOn ? 'Sound on' : 'Sound off';
+    }
+    btnSound.addEventListener('click', toggleSound);
+
+    /* ------------------------------------------------------------------
        TRANSMISSION (Void-layer portal: descend into a signal chamber,
        tune a dial through roots of light to receive a belief)
     ------------------------------------------------------------------ */
@@ -1619,10 +1797,10 @@
     function openTransmission() {
       transmission.classList.add('open');
       transmission.setAttribute('aria-hidden', 'false');
+      setTransmissionAudio(true);
       buildTxTicks();
       txOpenedAt = performance.now();
-      txFlash.classList.add('flash');
-      setTimeout(() => txFlash.classList.remove('flash'), 80);
+      fireScreenFlash(80);
       txSpawnEmbers(46, { burst: true });
       if (txRAF) cancelAnimationFrame(txRAF);
       txLastT = 0;
@@ -1638,6 +1816,7 @@
     function closeTransmission() {
       transmission.classList.remove('open');
       transmission.setAttribute('aria-hidden', 'true');
+      setTransmissionAudio(false);
       if (txRAF) { cancelAnimationFrame(txRAF); txRAF = null; }
     }
 
