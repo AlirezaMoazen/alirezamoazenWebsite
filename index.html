@@ -401,12 +401,33 @@
     }
     .node.portal-mote::after { display: none; }
     .mote-core {
-      position: absolute; width: 8px; height: 8px; left: 50%; top: 50%;
+      position: absolute; width: 11px; height: 11px; left: 50%; top: 50%;
       transform: translate(-50%, -50%); border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,170,110,0.9), rgba(255,90,30,0.35) 60%, transparent 100%);
+      background: radial-gradient(circle, rgba(255,190,130,1), rgba(255,106,43,0.6) 55%, transparent 100%);
+      box-shadow: 0 0 10px 2px rgba(255,106,43,0.45);
       animation: moteBreathe 3.6s infinite ease-in-out;
     }
-    @keyframes moteBreathe { 0%, 100% { opacity: 0.45; transform: scale(0.85); } 50% { opacity: 0.85; transform: scale(1.15); } }
+    @keyframes moteBreathe { 0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.9); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); } }
+    /* a slow ping ring every few seconds so the eye catches it */
+    .mote-ping {
+      position: absolute; left: 50%; top: 50%; width: 11px; height: 11px; border-radius: 50%;
+      border: 1.5px solid rgba(255,140,80,0.9); transform: translate(-50%, -50%);
+      animation: motePing 4.5s infinite cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none;
+    }
+    @keyframes motePing { 0% { transform: translate(-50%,-50%) scale(1); opacity: 0.9; } 40%, 100% { transform: translate(-50%,-50%) scale(7); opacity: 0; } }
+
+    /* Off-screen hint: a small ember at the viewport edge, pointing toward the signal */
+    #signalHint {
+      position: fixed; z-index: 140; width: 14px; height: 14px; border-radius: 50%; pointer-events: none;
+      background: radial-gradient(circle, rgba(255,190,130,1), rgba(255,106,43,0.7) 55%, transparent 100%);
+      box-shadow: 0 0 14px 4px rgba(255,106,43,0.5);
+      opacity: 0; transition: opacity 500ms ease; transform: translate(-50%, -50%);
+    }
+    #signalHint.show { opacity: 1; animation: moteBreathe 2.4s infinite ease-in-out; }
+    #signalHint::after {
+      content: ''; position: absolute; inset: -6px; border-radius: 50%;
+      border: 1px solid rgba(255,140,80,0.7); animation: motePing 3s infinite cubic-bezier(0.16, 1, 0.3, 1);
+    }
     .mote-label {
       position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
       font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
@@ -700,6 +721,7 @@
 <body>
 
   <div id="fxLayer" aria-hidden="true"></div>
+  <div id="signalHint" aria-hidden="true"></div>
   <div class="nebula"></div>
   <canvas id="star-canvas"></canvas>
   <div class="vignette"></div>
@@ -721,7 +743,7 @@
       <button class="btn" id="btnPause" type="button">Pause</button>
       <button class="btn" id="btnLines" type="button">Lines</button>
       <button class="btn" id="btnMap" type="button">Map on</button>
-      <button class="btn" id="btnSound" type="button" aria-label="Toggle ambient sound">Sound off</button>
+      <button class="btn" id="btnSound" type="button" aria-label="Toggle ambient sound">Sound on</button>
       <button class="btn" id="btnFindMe" type="button">Find Me</button>
       <!-- About button removed -->
       <button class="btn" id="btnZoomOut" type="button">−</button>
@@ -834,7 +856,7 @@
       { id: 'survival', title: 'Survival Instinct', kicker: 'Root', size: 'md', dist: 800, theta: 5.8, body: "My reflexes are not controlled by Alireza Moazen." },
       // Portals
       { id: 'portal-up', type: 'portal-up', dist: 280, theta: 1.0 },
-      { id: 'portal-tx', type: 'portal-transmission', dist: 1450, theta: 0.2, hidden: true }
+      { id: 'portal-tx', type: 'portal-transmission', dist: 1250, theta: 0.2, hidden: true }
     ];
 
     const CONTENT_EXTRAS = {
@@ -971,10 +993,14 @@
     function fitScale(){
       const maxDist = Math.max(...getLayerData().filter(d => !d.hidden).map(d => d.dist * distMult()), 300);
       const nodeR = 90;                       // half of the largest node
-      const margin = isMobile() ? 80 : 150;   // room for the HUD / minimap
+      const margin = isMobile() ? 80 : 120;   // room for the HUD / minimap
       const half = Math.min(window.innerWidth, window.innerHeight) / 2 - margin;
-      const floor = isMobile() ? 0.42 : SCALE_MIN; // keep labels readable on phones
-      return clamp(half / (maxDist + nodeR), floor, 1);
+      const fitAll = half / (maxDist + nodeR);
+      // Bias toward a closer view: the inner ring fills the screen, the outer nodes sit at the edges.
+      // Dragging reveals the rest - that's the point of the map.
+      const bias = isMobile() ? 1.15 : 1.9;
+      const floor = isMobile() ? 0.42 : 0.72;
+      return clamp(fitAll * bias, floor, 1);
     }
     
     function activeContent(id){ 
@@ -1024,7 +1050,7 @@
               el.className = 'node portal-mote';
               el.setAttribute('role', 'button');
               el.setAttribute('aria-label', 'A faint signal');
-              el.innerHTML = `<div class="mote-core"></div><div class="mote-label">a signal</div>`;
+              el.innerHTML = `<div class="mote-ping"></div><div class="mote-core"></div><div class="mote-label">a signal</div>`;
               el.addEventListener('pointerdown', (e) => { e.stopPropagation(); state.dragMoved = false; });
               el.addEventListener('click', (e) => { e.stopPropagation(); if (!state.dragMoved) { spawnClickPulse(e.clientX, e.clientY, '#FF6A2B'); openTransmission(); } });
             }
@@ -1200,9 +1226,29 @@
         });
       }
 
+      updateSignalHint();
       updateHUD();
       updateMinimap();
       requestAnimationFrame(loop);
+    }
+
+    // In the Void, when the hidden signal is off-screen, glow at the screen edge in its direction.
+    const signalHint = document.getElementById('signalHint');
+    function updateSignalHint() {
+      const mote = state.layerIndex === 2 ? state.nodes.find(n => n.type === 'portal-transmission') : null;
+      if (!mote || transmission.classList.contains('open') || document.body.classList.contains('warping')) {
+        signalHint.classList.remove('show'); return;
+      }
+      const sx = state.cx + mote.x * state.scale, sy = state.cy + mote.y * state.scale;
+      const inset = 28, w = window.innerWidth, h = window.innerHeight;
+      const onScreen = sx > inset && sx < w - inset && sy > inset && sy < h - inset;
+      if (onScreen) { signalHint.classList.remove('show'); return; }
+      // project the direction from screen center onto the viewport rectangle
+      const cx = w / 2, cy = h / 2, dx = sx - cx, dy = sy - cy;
+      const k = Math.min((cx - inset) / Math.abs(dx || 1e-6), (cy - inset) / Math.abs(dy || 1e-6));
+      signalHint.style.left = (cx + dx * k) + 'px';
+      signalHint.style.top = (cy + dy * k) + 'px';
+      signalHint.classList.add('show');
     }
 
     /* ------------------------------------------------------------------
@@ -1450,7 +1496,9 @@
     function startExp() {
       intro.style.opacity = 0;
       setTimeout(() => intro.style.display = 'none', 700);
-      state.layerStartTime = Date.now(); 
+      state.layerStartTime = Date.now();
+      // The click on "Experience me" is the user gesture browsers require: start the ambience here, fading in slowly.
+      try { setSound(true, 2.5); } catch (e) { /* no audio support - stay silent */ }
     }
 
     function centerView() {
@@ -1569,7 +1617,7 @@
 
       // surface: calm, warm triad. subconscious: lower, faint beat. void: near-sub-bass, dissonant.
       const specs = [
-        { freqs: [130.81, 196.00, 261.63], detune: [0, 0, 3],  lfoHz: 0.12, filter: 1400, vol: 0.05 },
+        { freqs: [110.00, 164.81, 220.00, 277.18, 220.00], detune: [0, 0, 0, -3, 5], lfoHz: 0.045, filter: 720, vol: 0.032 },
         { freqs: [98.00, 116.54, 155.56],  detune: [0, -6, 5], lfoHz: 0.08, filter: 900,  vol: 0.045 },
         { freqs: [55.00, 58.27],           detune: [0, 8],     lfoHz: 0.05, filter: 500,  vol: 0.05 }
       ];
@@ -1612,7 +1660,7 @@
       if (!audioCtx) return;
       const now = audioCtx.currentTime;
       const dur = instant ? 0.05 : 1.4;
-      const vols = [0.05, 0.045, 0.05];
+      const vols = [0.032, 0.045, 0.05];
       layerGains.forEach((g, i) => {
         g.gain.cancelScheduledValues(now);
         g.gain.setValueAtTime(g.gain.value, now);
@@ -1634,18 +1682,19 @@
       noiseGain.gain.linearRampToValueAtTime(open ? 0.022 : (state.layerIndex === 2 ? 0.012 : 0), now + 0.8);
     }
 
-    function toggleSound() {
-      soundOn = !soundOn;
+    function setSound(on, fadeSeconds) {
+      soundOn = !!on;
       if (soundOn && !audioCtx) buildAudioGraph();
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
       if (masterGain) {
         const now = audioCtx.currentTime;
         masterGain.gain.cancelScheduledValues(now);
         masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-        masterGain.gain.linearRampToValueAtTime(soundOn ? 1 : 0, now + 0.6);
+        masterGain.gain.linearRampToValueAtTime(soundOn ? 1 : 0, now + (fadeSeconds ?? 0.6));
       }
       btnSound.textContent = soundOn ? 'Sound on' : 'Sound off';
     }
+    function toggleSound() { setSound(!soundOn); }
     btnSound.addEventListener('click', toggleSound);
 
     /* ------------------------------------------------------------------
