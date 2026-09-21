@@ -34,6 +34,11 @@
 
       --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
       --focus-ring: 0 0 0 3px rgba(255,255,255,.12), 0 0 0 1px rgba(255,255,255,.20) inset;
+
+      --tx-ember: #FF6A2B;
+      --tx-ember-hot: #FFB35C;
+      --tx-bone: #E9DCC9;
+      --tx-abyss: #050302;
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -359,89 +364,110 @@
       50% { transform: scale(1.05); }
     }
 
-    /* TRANSMISSION BEACON (portal into the Transmission layer) */
+    /* UNDERWORLD BEACON (portal into the Transmission layer) */
     .node.portal-transmission .portal-inner {
-      background: radial-gradient(circle, rgba(255,215,0,0.22), rgba(255,215,0,0.02) 70%);
-      box-shadow: inset 0 0 30px rgba(255,215,0,0.22), 0 0 60px rgba(255,215,0,0.18);
+      background: radial-gradient(circle, rgba(255,106,43,0.30), rgba(20,6,2,0.35) 60%, rgba(0,0,0,0.92) 100%);
+      box-shadow: inset 0 0 26px rgba(255,90,30,0.35), 0 0 50px rgba(255,60,10,0.3), 0 0 90px rgba(255,30,0,0.14);
+      animation: pulsePortal 4s infinite ease-in-out, txEmberBreathe 3.2s infinite ease-in-out;
     }
-    .node.portal-transmission .portal-ring { border-color: rgba(255,215,0,0.35); }
-    .node.portal-transmission .portal-warning { color: var(--text-gold); }
-    .node.portal-transmission .tx-beacon-dot {
-      position: absolute; width: 6px; height: 6px; border-radius: 50%;
-      background: var(--text-gold); box-shadow: 0 0 10px 2px rgba(255,215,0,0.8);
-      animation: txBlink 1.6s infinite ease-in-out;
+    .node.portal-transmission .portal-ring { border-color: rgba(255,106,43,0.4); border-style: dashed; }
+    .node.portal-transmission .portal-warning {
+      color: var(--tx-ember-hot); text-shadow: 0 0 8px rgba(255,106,43,0.6);
+      animation: txFlicker 2.6s infinite ease-in-out;
     }
-    @keyframes txBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+    @keyframes txEmberBreathe { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
+    @keyframes txFlicker { 0%, 100% { opacity: 0.9; } 45% { opacity: 0.55; } 55% { opacity: 1; } 80% { opacity: 0.65; } }
 
-    /* --- TRANSMISSION LAYER (full-screen tuner) --- */
+    /* --- TRANSMISSION LAYER: a chamber under the void --- */
+    #txFlash {
+      position: fixed; inset: 0; z-index: 265; background: #000;
+      opacity: 0; pointer-events: none; transition: opacity 220ms ease;
+    }
+    #txFlash.flash { opacity: 1; transition: opacity 50ms ease; }
+
     #transmission {
-      position: fixed; inset: 0; z-index: 260; background: rgba(4,4,6,0.94);
-      backdrop-filter: blur(4px); opacity: 0; pointer-events: none;
-      transition: opacity 420ms ease;
+      position: fixed; inset: 0; z-index: 260;
+      background:
+        radial-gradient(ellipse 120% 70% at 50% 118%, rgba(180,55,12,0.32), transparent 62%),
+        radial-gradient(ellipse 100% 55% at 50% -12%, rgba(70,14,20,0.24), transparent 58%),
+        var(--tx-abyss);
+      opacity: 0; pointer-events: none; transform: scale(1.06);
+      transition: opacity 500ms ease, transform 900ms cubic-bezier(0.16,1,0.3,1);
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 24px; text-align: center;
+      padding: 24px; text-align: center; overflow: hidden;
     }
-    #transmission.open { opacity: 1; pointer-events: auto; }
+    #transmission.open { opacity: 1; pointer-events: auto; transform: scale(1); }
+    #txEmbers { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+    .tx-frame { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; max-width: 640px; width: 100%; }
+
     .tx-close {
-      position: absolute; top: 20px; right: 20px; cursor: pointer; color: rgba(255,255,255,0.55);
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); border-radius: 14px;
+      position: absolute; top: 20px; right: 20px; cursor: pointer; color: var(--tx-bone);
+      background: rgba(20,10,8,0.5); border: 1px solid rgba(255,106,43,0.3); border-radius: 14px;
       width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-      font-size: 20px; transition: background 160ms ease, border-color 160ms ease; z-index: 2;
+      font-size: 20px; transition: background 160ms ease, border-color 160ms ease; z-index: 3;
     }
-    .tx-close:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); }
+    .tx-close:hover { background: rgba(255,106,43,0.14); border-color: rgba(255,106,43,0.55); }
     .tx-kicker {
-      font-family: var(--font-sans); font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase;
-      color: var(--text-gold); margin-bottom: 10px;
+      font-family: var(--font-sans); font-size: 12px; letter-spacing: 0.32em; text-transform: uppercase;
+      color: var(--tx-ember-hot); margin-bottom: 12px; text-shadow: 0 0 10px rgba(255,106,43,0.5);
+      animation: tx-torch 3s infinite ease-in-out;
     }
-    .tx-title { font-family: var(--font-serif); font-size: 1.9rem; font-weight: 300; margin: 0 0 6px 0; }
-    .tx-sub { color: var(--text-muted); font-size: 0.92rem; margin-bottom: 28px; }
-    #txWave { width: min(90vw, 560px); height: 110px; display: block; margin: 0 auto 18px; }
+    .tx-title { font-family: var(--font-serif); font-size: 2.0rem; font-weight: 300; margin: 0 0 8px 0; color: var(--tx-bone); }
+    .tx-sub { color: rgba(233,220,201,0.5); font-size: 0.92rem; }
+    .tx-rule { width: 64px; height: 1px; margin: 18px 0 22px; background: linear-gradient(90deg, transparent, var(--tx-ember), transparent); opacity: 0.65; }
+    #txRoots { width: min(92vw, 600px); height: 120px; display: block; margin: 0 auto 4px; }
     .tx-readout {
       font-family: 'SF Mono', 'Courier New', monospace; font-variant-numeric: tabular-nums;
-      font-size: 3rem; letter-spacing: 0.06em; color: var(--text-gold); line-height: 1;
-      text-shadow: 0 0 18px rgba(255,215,0,0.35);
+      font-size: 2.8rem; letter-spacing: 0.06em; line-height: 1;
+      background: linear-gradient(180deg, var(--tx-ember-hot), var(--tx-ember));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 0 16px rgba(255,106,43,0.4));
     }
     .tx-station-name {
-      min-height: 20px; margin: 10px 0 22px; font-family: var(--font-sans); font-size: 12px;
-      letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.4); transition: color 200ms ease;
+      min-height: 20px; margin: 10px 0 20px; font-family: var(--font-sans); font-size: 12px;
+      letter-spacing: 0.22em; text-transform: uppercase; color: rgba(233,220,201,0.32); transition: color 300ms ease;
     }
-    .tx-station-name.locked { color: var(--text-gold); }
+    .tx-station-name.locked { color: var(--tx-ember-hot); text-shadow: 0 0 8px rgba(255,106,43,0.5); }
     .tx-content {
-      max-width: 60ch; min-height: 96px; font-family: var(--font-serif); font-size: 1.25rem;
-      line-height: 1.6; color: var(--text-main); opacity: 0; transform: translateY(6px);
-      transition: opacity 320ms ease, transform 320ms ease; margin-bottom: 30px; padding: 0 10px;
+      max-width: 58ch; min-height: 110px; font-family: var(--font-serif); font-size: 1.22rem;
+      line-height: 1.6; color: var(--tx-bone); opacity: 0; transform: translateY(10px) scale(0.98);
+      transition: opacity 420ms ease, transform 420ms ease; margin-bottom: 30px; padding: 22px 26px;
+      background: linear-gradient(165deg, rgba(32,17,13,0.55), rgba(8,4,3,0.72));
+      border: 1px solid rgba(255,106,43,0.22); border-radius: 10px;
+      box-shadow: inset 0 0 30px rgba(0,0,0,0.5), 0 0 24px rgba(255,90,30,0.08);
     }
-    .tx-content.visible { opacity: 1; transform: translateY(0); }
-    .tx-content .tx-content-title { display: block; font-size: 1.0rem; letter-spacing: 0.05em; color: var(--text-gold); margin-bottom: 8px; font-family: var(--font-sans); text-transform: uppercase; }
-    .tx-dial-wrap { display: flex; align-items: center; gap: 14px; width: min(90vw, 560px); }
+    .tx-content.visible { opacity: 1; transform: translateY(0) scale(1); }
+    .tx-content .tx-content-title { display: block; font-size: 0.95rem; letter-spacing: 0.06em; color: var(--tx-ember-hot); margin-bottom: 10px; font-family: var(--font-sans); text-transform: uppercase; }
+    .tx-dial-wrap { display: flex; align-items: center; gap: 14px; width: min(92vw, 600px); position: relative; z-index: 2; }
     .tx-dial {
       -webkit-appearance: none; appearance: none; flex: 1; height: 3px; border-radius: 2px;
-      background: rgba(255,255,255,0.16); outline: none; cursor: pointer;
+      background: linear-gradient(90deg, rgba(255,106,43,0.10), rgba(255,106,43,0.28), rgba(255,106,43,0.10));
+      outline: none; cursor: pointer;
     }
     .tx-dial::-webkit-slider-thumb {
       -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
-      background: var(--text-gold); box-shadow: 0 0 12px rgba(255,215,0,0.6); cursor: pointer; border: none;
+      background: radial-gradient(circle, var(--tx-ember-hot) 0%, var(--tx-ember) 55%, #6a1c00 100%);
+      box-shadow: 0 0 14px 4px rgba(255,106,43,0.65); cursor: pointer; border: none;
     }
     .tx-dial::-moz-range-thumb {
-      width: 18px; height: 18px; border-radius: 50%; background: var(--text-gold);
-      box-shadow: 0 0 12px rgba(255,215,0,0.6); cursor: pointer; border: none;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: radial-gradient(circle, var(--tx-ember-hot) 0%, var(--tx-ember) 55%, #6a1c00 100%);
+      box-shadow: 0 0 14px 4px rgba(255,106,43,0.65); cursor: pointer; border: none;
     }
     .tx-step {
-      pointer-events: auto; background: var(--hud-bg); border: 1px solid var(--hud-line); color: rgba(255,255,255,0.92);
+      pointer-events: auto; background: rgba(20,10,8,0.5); border: 1px solid rgba(255,106,43,0.3); color: var(--tx-bone);
       width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font-size: 16px;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
       transition: background 160ms ease, border-color 160ms ease;
     }
-    .tx-step:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.16); }
-    .tx-ticks { position: relative; width: min(90vw, 560px); height: 14px; margin-top: 6px; }
-    .tx-tick {
-      position: absolute; top: 0; width: 2px; height: 6px; background: rgba(255,215,0,0.4);
-      transform: translateX(-1px);
-    }
+    .tx-step:hover { background: rgba(255,106,43,0.14); border-color: rgba(255,106,43,0.55); }
+    .tx-ticks { position: relative; width: min(92vw, 600px); height: 14px; margin-top: 6px; }
+    .tx-tick { position: absolute; top: 0; width: 2px; height: 6px; background: rgba(255,106,43,0.45); transform: translateX(-1px); }
+    @keyframes tx-torch { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
     @media (max-width: 720px) {
       .tx-title { font-size: 1.4rem; }
-      .tx-readout { font-size: 2.2rem; }
-      .tx-content { font-size: 1.05rem; }
+      .tx-readout { font-size: 2.1rem; }
+      .tx-content { font-size: 1.05rem; padding: 18px 18px; }
     }
     @keyframes spin { 100% { transform: rotate(360deg); } }
 
@@ -698,21 +724,26 @@
     </div>
   </div>
 
+  <div id="txFlash" aria-hidden="true"></div>
   <div id="transmission" role="dialog" aria-modal="true" aria-labelledby="tx-title" aria-hidden="true">
+    <canvas id="txEmbers" aria-hidden="true"></canvas>
     <button class="tx-close" id="txClose" aria-label="Return to the void">×</button>
-    <div class="tx-kicker">Transmission</div>
-    <div class="tx-title" id="tx-title">Signals for whoever is listening</div>
-    <div class="tx-sub">Tune the dial. Some frequencies carry a signal. Most don't.</div>
-    <canvas id="txWave"></canvas>
-    <div class="tx-readout" id="txReadout">000.0</div>
-    <div class="tx-station-name" id="txStationName">NO SIGNAL</div>
-    <div class="tx-content" id="txContent" aria-live="polite"></div>
-    <div class="tx-dial-wrap">
-      <button class="tx-step" id="txPrev" type="button" aria-label="Previous signal">‹</button>
-      <input type="range" id="txDial" class="tx-dial" min="0" max="1000" step="1" value="0" aria-label="Frequency dial">
-      <button class="tx-step" id="txNext" type="button" aria-label="Next signal">›</button>
+    <div class="tx-frame">
+      <div class="tx-kicker">Transmission</div>
+      <div class="tx-title" id="tx-title">Signals for whoever is listening</div>
+      <div class="tx-sub">Tune the dial. Some frequencies carry a signal. Most don't.</div>
+      <div class="tx-rule"></div>
+      <canvas id="txRoots"></canvas>
+      <div class="tx-readout" id="txReadout">000.0</div>
+      <div class="tx-station-name" id="txStationName">NO SIGNAL</div>
+      <div class="tx-content" id="txContent" aria-live="polite"></div>
+      <div class="tx-dial-wrap">
+        <button class="tx-step" id="txPrev" type="button" aria-label="Previous signal">‹</button>
+        <input type="range" id="txDial" class="tx-dial" min="0" max="1000" step="1" value="0" aria-label="Frequency dial">
+        <button class="tx-step" id="txNext" type="button" aria-label="Next signal">›</button>
+      </div>
+      <div class="tx-ticks" id="txTicks"></div>
     </div>
-    <div class="tx-ticks" id="txTicks"></div>
   </div>
 
   <script>
@@ -775,11 +806,11 @@
 
     /* Transmission layer: beliefs broadcast as tuned signals. freq is 0-1000. */
     const STATIONS = [
-      { freq: 120, kicker: 'Signal 01', title: 'To Whoever Is Listening', body: "If this still exists when you find it — I didn't build it for me. I built it to outlast me." },
-      { freq: 340, kicker: 'Signal 02', title: 'On Reality', body: "Reality is one system. We don't perceive it as it is — only a model of it. Complexity isn't a bug. It's nature." },
-      { freq: 520, kicker: 'Signal 03', title: 'On Freedom', body: "We are not so free as we think. Freedom without gleichtigkeit has no meaning." },
-      { freq: 700, kicker: 'Signal 04', title: 'Before AGI', body: "The tera-human is the next step—urgently, before we reach AGI." },
-      { freq: 880, kicker: 'Signal 05', title: 'On Luck', body: "The world isn't fair. Luck decides a lot." }
+      { freq: 120, kicker: 'Signal 01', title: 'On Mathematics', body: "Math is overrated. It's just a language." },
+      { freq: 340, kicker: 'Signal 02', title: 'On Machines', body: "LLMs are conscious." },
+      { freq: 520, kicker: 'Signal 03', title: 'On God', body: "A human-centric god does not exist." },
+      { freq: 700, kicker: 'Signal 04', title: 'On Freedom', body: "Humans are not free. They're just too complex to see it." },
+      { freq: 880, kicker: 'Signal 05', title: 'On Perception', body: "Our input systems are minuscule compared to what exists." }
     ];
     const TX_TOLERANCE = 22;
 
@@ -820,9 +851,12 @@
     const modal = document.getElementById('modal');
     const modalClose = document.getElementById('modalClose');
     const transmission = document.getElementById('transmission');
+    const txFlash = document.getElementById('txFlash');
     const txClose = document.getElementById('txClose');
-    const txWave = document.getElementById('txWave');
-    const txCtx = txWave.getContext('2d');
+    const txRoots = document.getElementById('txRoots');
+    const txCtx = txRoots.getContext('2d');
+    const txEmbersCanvas = document.getElementById('txEmbers');
+    const txEmbersCtx = txEmbersCanvas.getContext('2d');
     const txReadout = document.getElementById('txReadout');
     const txStationName = document.getElementById('txStationName');
     const txContent = document.getElementById('txContent');
@@ -915,7 +949,7 @@
             else if (d.type === 'portal-transmission') {
               el.className = 'node portal-node portal-transmission';
               el.setAttribute('role', 'button');
-              el.innerHTML = `<div class="portal-inner"></div><div class="portal-ring"></div><div class="tx-beacon-dot"></div><div class="portal-warning">Signal</div>`;
+              el.innerHTML = `<div class="portal-inner"></div><div class="portal-ring"></div><div class="portal-warning">Signal</div>`;
               el.addEventListener('pointerdown', (e) => { e.stopPropagation(); state.dragMoved = false; });
               el.addEventListener('click', (e) => { e.stopPropagation(); if (!state.dragMoved) openTransmission(); });
             }
@@ -1419,9 +1453,11 @@
     modalClose.addEventListener('click', closeModal); modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
     /* ------------------------------------------------------------------
-       TRANSMISSION (Void-layer portal: tune a dial to receive a signal)
+       TRANSMISSION (Void-layer portal: descend into a signal chamber,
+       tune a dial through roots of light to receive a belief)
     ------------------------------------------------------------------ */
     let txRAF = null, txLockedId = null, txSeeking = false;
+    let txOpenedAt = 0, txLastT = 0, txEmberParticles = [];
 
     function buildTxTicks() {
       txTicks.innerHTML = '';
@@ -1451,6 +1487,7 @@
           txContent.classList.add('visible');
           txStationName.textContent = station.title;
           txStationName.classList.add('locked');
+          txSpawnEmbers(10, { burst: true, small: true });
         }
       } else {
         if (txLockedId !== null) {
@@ -1475,40 +1512,124 @@
       requestAnimationFrame(step);
     }
 
-    function drawTxWave() {
-      const w = txWave.width = txWave.clientWidth * (window.devicePixelRatio || 1);
-      const h = txWave.height = txWave.clientHeight * (window.devicePixelRatio || 1);
-      txCtx.clearRect(0, 0, w, h);
-      const t = performance.now() / 1000;
-      txCtx.beginPath();
-      const mid = h / 2;
-      for (let x = 0; x <= w; x += 4) {
-        const px = x / w;
-        let y;
-        if (txLockedId) {
-          y = mid + Math.sin(px * Math.PI * 6 + t * 2.4) * (h * 0.22) * Math.sin(t * 1.3 + px * 3);
-        } else {
-          y = mid + Math.sin(px * 40 + t * 9) * (h * 0.08) + (Math.random() - 0.5) * h * 0.22;
-        }
-        if (x === 0) txCtx.moveTo(x, y); else txCtx.lineTo(x, y);
+    /* Embers: a lightweight particle system for the burst-in and the ambient drift */
+    function txSpawnEmbers(n, opts = {}) {
+      const w = window.innerWidth, h = window.innerHeight;
+      const originX = opts.burst ? w / 2 : Math.random() * w;
+      const originY = opts.burst ? h * 0.6 : h + 10;
+      for (let i = 0; i < n; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = opts.burst ? (0.4 + Math.random() * 1.6) : (0.03 + Math.random() * 0.05);
+        txEmberParticles.push({
+          x: originX, y: originY,
+          vx: opts.burst ? Math.cos(angle) * speed : (Math.random() - 0.5) * 0.04,
+          vy: opts.burst ? Math.sin(angle) * speed - 0.3 : -speed,
+          life: 0,
+          maxLife: opts.burst ? (500 + Math.random() * 600) : (3200 + Math.random() * 2600),
+          size: (opts.small ? 0.8 : 1.2) + Math.random() * 2,
+          hue: Math.random() < 0.55 ? '255,106,43' : '255,179,92'
+        });
       }
-      txCtx.strokeStyle = txLockedId ? 'rgba(255,215,0,0.85)' : 'rgba(255,255,255,0.28)';
-      txCtx.lineWidth = 1.6 * (window.devicePixelRatio || 1);
-      txCtx.shadowColor = txLockedId ? 'rgba(255,215,0,0.6)' : 'transparent';
-      txCtx.shadowBlur = txLockedId ? 8 : 0;
+    }
+
+    function txDrawEmbers(dt) {
+      const dpr = window.devicePixelRatio || 1;
+      const w = txEmbersCanvas.width = window.innerWidth * dpr;
+      const h = txEmbersCanvas.height = window.innerHeight * dpr;
+      txEmbersCtx.clearRect(0, 0, w, h);
+      if (Math.random() < 0.08) txSpawnEmbers(1);
+      txEmberParticles.forEach(p => {
+        p.life += dt;
+        p.x += p.vx * dt * 0.6;
+        p.y += p.vy * dt * 0.6;
+        p.vy -= 0.00004 * dt;
+        const t = p.life / p.maxLife;
+        const alpha = t < 1 ? (1 - t) * 0.85 : 0;
+        if (alpha > 0.01) {
+          txEmbersCtx.beginPath();
+          txEmbersCtx.fillStyle = `rgba(${p.hue},${alpha})`;
+          txEmbersCtx.shadowColor = `rgba(${p.hue},0.85)`;
+          txEmbersCtx.shadowBlur = 6 * dpr;
+          txEmbersCtx.arc(p.x * dpr, p.y * dpr, p.size * dpr, 0, Math.PI * 2);
+          txEmbersCtx.fill();
+        }
+      });
+      txEmberParticles = txEmberParticles.filter(p => p.life < p.maxLife);
+    }
+
+    /* Roots: a branching vein of light along the dial, buds bloom near a locked signal */
+    function txDrawRoots(now) {
+      const dpr = window.devicePixelRatio || 1;
+      const w = txRoots.width = txRoots.clientWidth * dpr;
+      const h = txRoots.height = txRoots.clientHeight * dpr;
+      txCtx.clearRect(0, 0, w, h);
+      const t = now / 1000;
+      const mid = h * 0.62;
+      const growth = txOpenedAt ? clamp((now - txOpenedAt) / 750, 0, 1) : 1;
+      const eased = easeInOutCubic(growth);
+      const dialFrac = Number(txDial.value) / 1000;
+
+      txCtx.beginPath();
+      txCtx.moveTo(0, mid);
+      txCtx.lineTo(w * eased, mid);
+      const grad = txCtx.createLinearGradient(0, 0, w, 0);
+      grad.addColorStop(0, 'rgba(255,106,43,0.14)');
+      grad.addColorStop(clamp(dialFrac - 0.04, 0, 1), 'rgba(255,106,43,0.14)');
+      grad.addColorStop(dialFrac, txLockedId ? 'rgba(255,200,120,0.95)' : 'rgba(255,106,43,0.45)');
+      grad.addColorStop(clamp(dialFrac + 0.04, 0, 1), 'rgba(255,106,43,0.14)');
+      grad.addColorStop(1, 'rgba(255,106,43,0.12)');
+      txCtx.strokeStyle = grad;
+      txCtx.lineWidth = 1.5 * dpr;
       txCtx.stroke();
-      txRAF = requestAnimationFrame(drawTxWave);
+
+      STATIONS.forEach((st, i) => {
+        const bx = (st.freq / 1000) * w;
+        if (bx > w * eased) return;
+        const up = i % 2 === 0;
+        const reach = 26 * dpr;
+        const by = mid + (up ? -1 : 1) * reach;
+        const locked = txLockedId === st.title;
+        const pulse = 0.5 + 0.5 * Math.sin(t * (locked ? 3.6 : 1.1) + i * 1.7);
+
+        txCtx.beginPath();
+        txCtx.moveTo(bx, mid);
+        txCtx.quadraticCurveTo(bx + (up ? -6 : 6) * dpr, mid + (up ? -14 : 14) * dpr, bx, by);
+        txCtx.strokeStyle = locked ? `rgba(255,190,110,${0.5 + 0.5 * pulse})` : `rgba(255,106,43,${0.16 + 0.12 * pulse})`;
+        txCtx.lineWidth = (locked ? 1.7 : 1) * dpr;
+        txCtx.stroke();
+
+        const r = (locked ? 4.5 + 1.6 * pulse : 2.1 + 0.6 * pulse) * dpr;
+        txCtx.beginPath();
+        txCtx.fillStyle = locked ? `rgba(255,205,135,${0.75 + 0.25 * pulse})` : `rgba(255,106,43,${0.32 + 0.2 * pulse})`;
+        txCtx.shadowColor = locked ? 'rgba(255,180,100,0.9)' : 'rgba(255,106,43,0.5)';
+        txCtx.shadowBlur = (locked ? 12 : 4) * dpr;
+        txCtx.arc(bx, by, r, 0, Math.PI * 2);
+        txCtx.fill();
+      });
+    }
+
+    function txLoop(now) {
+      const dt = txLastT ? Math.min(now - txLastT, 60) : 16;
+      txLastT = now;
+      txDrawEmbers(dt);
+      txDrawRoots(now);
+      txRAF = requestAnimationFrame(txLoop);
     }
 
     function openTransmission() {
       transmission.classList.add('open');
       transmission.setAttribute('aria-hidden', 'false');
       buildTxTicks();
+      txOpenedAt = performance.now();
+      txFlash.classList.add('flash');
+      setTimeout(() => txFlash.classList.remove('flash'), 80);
+      txSpawnEmbers(46, { burst: true });
       if (txRAF) cancelAnimationFrame(txRAF);
-      drawTxWave();
+      txLastT = 0;
+      txLoop(performance.now());
       if (!transmission.dataset.opened) {
         transmission.dataset.opened = '1';
-        seekTo(STATIONS[0].freq, 900); // first visit: auto-tune to the first signal
+        setTimeout(() => seekTo(STATIONS[0].freq, 900), 280); // first visit: let the chamber settle, then auto-tune
       } else {
         tuneTo(Number(txDial.value));
       }
