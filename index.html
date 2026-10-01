@@ -434,51 +434,28 @@
       50% { transform: scale(1.05); }
     }
 
-    /* HIDDEN SIGNAL (a mote in the dark - not a node, easy to miss) */
-    .node.portal-mote {
-      width: 26px; height: 26px; border-radius: 50%; border: none; padding: 0;
-      background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
-      box-shadow: none; z-index: 6; cursor: pointer;
-      transition: transform 220ms ease;
-    }
-    .node.portal-mote::after { display: none; }
-    .mote-core {
-      position: absolute; width: 11px; height: 11px; left: 50%; top: 50%;
-      transform: translate(-50%, -50%); border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,190,130,1), rgba(255,106,43,0.6) 55%, transparent 100%);
-      box-shadow: 0 0 10px 2px rgba(255,106,43,0.45);
-      animation: moteBreathe 3.6s infinite ease-in-out;
-    }
     @keyframes moteBreathe { 0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.9); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); } }
-    /* a slow ping ring every few seconds so the eye catches it */
-    .mote-ping {
-      position: absolute; left: 50%; top: 50%; width: 11px; height: 11px; border-radius: 50%;
-      border: 1.5px solid rgba(255,140,80,0.9); transform: translate(-50%, -50%);
-      animation: motePing 4.5s infinite cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none;
-    }
     @keyframes motePing { 0% { transform: translate(-50%,-50%) scale(1); opacity: 0.9; } 40%, 100% { transform: translate(-50%,-50%) scale(7); opacity: 0; } }
 
+    /* the small black hole of the void is the way further: a generous hit area and a slow ping ring as the hint */
+    #hz { position: absolute; left: 1218px; top: 1591px; width: 160px; height: 160px; border-radius: 50%; z-index: 6; display: none; cursor: pointer; outline: none; }
+    body.layer-2 #hz { display: block; }
+    #hz::before { content: ''; position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+      border: 1px solid rgba(255,233,196,.75); pointer-events: none; animation: hzPing 5.5s infinite cubic-bezier(.16,1,.3,1); }
+    #hz:hover::before, #hz:focus-visible::before { border-color: #fff; }
+    @keyframes hzPing { 0% { transform: scale(1); opacity: .85; } 45%, 100% { transform: scale(5.5); opacity: 0; } }
     /* Off-screen hint: a small ember at the viewport edge, pointing toward the signal */
     #signalHint {
       position: fixed; z-index: 140; width: 14px; height: 14px; border-radius: 50%; pointer-events: none;
-      background: radial-gradient(circle, rgba(255,190,130,1), rgba(255,106,43,0.7) 55%, transparent 100%);
-      box-shadow: 0 0 14px 4px rgba(255,106,43,0.5);
+      background: radial-gradient(circle, rgba(255,246,228,1), rgba(255,226,186,0.7) 55%, transparent 100%);
+      box-shadow: 0 0 14px 4px rgba(255,226,186,0.45);
       opacity: 0; transition: opacity 500ms ease; transform: translate(-50%, -50%);
     }
     #signalHint.show { opacity: 1; animation: moteBreathe 2.4s infinite ease-in-out; }
     #signalHint::after {
       content: ''; position: absolute; inset: -6px; border-radius: 50%;
-      border: 1px solid rgba(255,140,80,0.7); animation: motePing 3s infinite cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid rgba(255,226,186,0.7); animation: motePing 3s infinite cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .mote-label {
-      position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
-      font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
-      color: var(--em-ember-hot); white-space: nowrap; opacity: 0; pointer-events: none;
-      transition: opacity 260ms ease;
-    }
-    .node.portal-mote:hover { transform: translate(-50%, -50%) scale(2.6) !important; }
-    .node.portal-mote:hover .mote-core { animation: none; opacity: 1; box-shadow: 0 0 14px 4px rgba(255,106,43,0.55); }
-    .node.portal-mote:hover .mote-label { opacity: 0.9; }
 
     /* --- TRANSMISSION LAYER: a chamber under the void --- */
     #screenFlash {
@@ -958,6 +935,7 @@
         <ellipse cx="80" cy="38" rx="66" ry="2.6" fill="url(#gBand)"/>
         <ellipse cx="80" cy="38" rx="34" ry="1.2" fill="#fff1d6" opacity=".7"/>
       </svg></div>
+      <div id="hz" role="button" tabindex="0" aria-label="A small black hole"></div>
 
       <div class="node center-node" id="node-center" role="button" tabindex="0" aria-label="Open core">
         <h1 id="center-title">The pattern of Alireza Moazen</h1>
@@ -1045,8 +1023,7 @@
       { id: 'curiosity', title: 'Curiosity', kicker: 'Fuel', size: 'lg', dist: 700, theta: 4.5, body: "Fear of never feel curiosity again." },
       { id: 'survival', title: 'Survival Instinct', kicker: 'Root', size: 'md', dist: 800, theta: 5.8, body: "My reflexes are not controlled by Alireza Moazen." },
       // Portals
-      { id: 'portal-up', type: 'portal-up', dist: 280, theta: 1.0 },
-      { id: 'm0', type: 'mote', dist: 1250, theta: 0.2, hidden: true }
+      { id: 'portal-up', type: 'portal-up', dist: 280, theta: 1.0 }
     ];
 
     const CONTENT_EXTRAS = {
@@ -1240,14 +1217,6 @@
               el.innerHTML = `<div class="portal-inner"></div><div class="portal-ring"></div>`;
               el.addEventListener('pointerdown', (e) => { e.stopPropagation(); state.dragMoved = false; });
               el.addEventListener('click', (e) => { e.stopPropagation(); if (!state.dragMoved) { spawnClickPulse(e.clientX, e.clientY, layerAccent(state.layerIndex - 1)); goBack(); } });
-            }
-            else if (d.type === 'mote') {
-              el.className = 'node portal-mote';
-              el.setAttribute('role', 'button');
-              el.setAttribute('aria-label', 'A faint signal');
-              el.innerHTML = `<div class="mote-ping"></div><div class="mote-core"></div><div class="mote-label">a signal</div>`;
-              el.addEventListener('pointerdown', (e) => { e.stopPropagation(); state.dragMoved = false; });
-              el.addEventListener('click', (e) => { e.stopPropagation(); if (!state.dragMoved) { spawnClickPulse(e.clientX, e.clientY, '#FF6A2B'); zEnter(e); } });
             }
             else {
               el.className = `node ${d.size === 'sm' ? 'size-sm' : d.size === 'md' ? 'size-md' : 'size-lg'}`;
@@ -1514,9 +1483,6 @@
                   finalScale = startSize + (7.9 * (1 - Math.pow(1 - clamp(age / duration, 0, 1), 3)));
               }
             }
-            else if (n.type === 'mote') {
-              // A hidden mote: stays at its own tiny, constant scale regardless of depth
-            }
             else {
                if (n.hover) finalScale = 1.10;
                if (state.layerIndex >= 1) finalScale *= 0.7; // Regular nodes shrink in deeper layers
@@ -1571,7 +1537,7 @@
     // In the Void, when the hidden signal is off-screen, glow at the screen edge in its direction.
     const signalHint = document.getElementById('signalHint');
     function updateSignalHint() {
-      const mote = state.layerIndex === 2 ? state.nodes.find(n => n.type === 'mote') : null;
+      const mote = state.layerIndex === 2 ? VOID_FOCUS : null;
       if (!mote || zOpen || document.body.classList.contains('warping')) {
         signalHint.classList.remove('show'); return;
       }
@@ -2223,6 +2189,9 @@
       screenFlashEl.classList.add('flash');
       zBoot().then(m => m.open()).catch(() => {}).then(() => setTimeout(() => screenFlashEl.classList.remove('flash'), 140));
     }
+    const hz = document.getElementById('hz');
+    hz.addEventListener('pointerdown', (e) => { e.stopPropagation(); state.dragMoved = false; });
+    hz.addEventListener('click', (e) => { e.stopPropagation(); if (!state.dragMoved) { spawnClickPulse(e.clientX, e.clientY, '#ffe9c4'); zEnter(e); } });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !zOpen && modal.classList.contains('open')) closeModal(); });
 
 
