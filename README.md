@@ -37,9 +37,6 @@ To publish the website:
 - Deploy the repository to any static hosting service.
 - If using GitHub Pages, deploy from the `main` branch or configured publishing branch.
 
-## Contributing
-
-Contributions are welcome. Please open an issue or submit a pull request for any improvements, fixes, or updates.
 
 ## License
 
