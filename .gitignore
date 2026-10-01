@@ -1,0 +1,11 @@
+# Ignored files for static website project
+.DS_Store
+Thumbs.db
+
+# Dependency folders (if added later)
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
