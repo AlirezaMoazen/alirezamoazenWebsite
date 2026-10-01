@@ -772,6 +772,37 @@
     body.layer-1 #deepfield .df-m { opacity: var(--o, 1); }
     body:not(.layer-1):not(.layer-2) #deepfield .df-s { opacity: var(--o, 1); }
 
+    /* ENGULF: a fully grown black hole spreads its darkness over the whole screen, then the Void plays. */
+    #veil { position: fixed; left: 0; top: 0; width: 100px; height: 100px; z-index: 110; pointer-events: none; opacity: 0; will-change: transform, opacity;
+      background: radial-gradient(circle closest-side, #000 0, #000 68%, rgba(0,0,0,.6) 82%, rgba(0,0,0,0) 100%); }
+    #voidfall { position: fixed; inset: 0; z-index: 250; background: #000; opacity: 0; pointer-events: none; overflow: hidden;
+      display: flex; align-items: center; justify-content: center; transition: opacity 1.6s ease; }
+    #voidfall.on { opacity: 1; pointer-events: auto; }
+    #voidfall.end { opacity: 0; pointer-events: none; transition: opacity 3s ease; }
+    .vf-dot { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%; background: #fff; opacity: 0; box-shadow: 0 0 8px 1px rgba(255,255,255,.55); }
+    .vf-word { display: flex; font-family: var(--font-serif); font-weight: 300; font-size: clamp(3.4rem, 17vw, 9.5rem); color: #e9e9ee; line-height: 1; user-select: none; }
+    .vf-word span { display: inline-block; opacity: 0; }
+    .vf-lines { position: absolute; left: 0; right: 0; top: 64%; text-align: center; font: 300 12px/1 var(--font-sans); letter-spacing: .5em; text-transform: uppercase; color: rgba(236,236,236,.5); }
+    .vf-lines p { position: absolute; left: 0; right: 0; margin: 0; opacity: 0; }
+    #voidfall.on .vf-dot { animation: vfDot 13s ease-in forwards; }
+    #voidfall.on .vf-word span { animation: vfLetter 11.5s ease-in-out 1.6s both; }
+    #voidfall.on .vf-word span:nth-child(2) { animation-delay: 1.9s; }
+    #voidfall.on .vf-word span:nth-child(3) { animation-delay: 2.2s; }
+    #voidfall.on .vf-word span:nth-child(4) { animation-delay: 2.5s; }
+    #voidfall.on .vf-lines p { animation: vfLine 2.8s ease-in-out both; }
+    @keyframes vfDot { 0%, 10% { opacity: 0; transform: translate(0,0) scale(1); } 22% { opacity: .9; } 100% { opacity: 0; transform: translate(-34vw, -16vh) scale(.15); } }
+    @keyframes vfLetter {
+      0%   { opacity: 0; filter: blur(16px); transform: translate(calc(var(--d) * .15em), 0); }
+      28%  { opacity: .92; filter: blur(0); transform: translate(calc(var(--d) * .3em), 0); }
+      62%  { opacity: .85; filter: blur(0); transform: translate(calc(var(--d) * .7em), calc(var(--y) * .1em)); }
+      100% { opacity: 0; filter: blur(12px); transform: translate(calc(var(--d) * 2.6em), calc(var(--y) * 1.4em)); } }
+    @keyframes vfLine { 0% { opacity: 0; } 30%, 60% { opacity: 1; } 100% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      #voidfall.on .vf-word span { animation: vfLineR 9s ease-in-out 1.6s both; }
+      #voidfall.on .vf-dot { animation: none; }
+      @keyframes vfLineR { 0% { opacity: 0; } 30%, 65% { opacity: .9; } 100% { opacity: 0; } }
+    }
+
     /* PERFORMANCE: phones / touch devices. Live blur and big soft shadows on every moving node
        are the most expensive things on this page, so they are replaced by cheap equivalents. */
     @media (max-width: 720px), (pointer: coarse) {
@@ -959,6 +990,12 @@
     </div>
   </div>
 
+  <div id="veil" aria-hidden="true"></div>
+  <div id="voidfall" aria-hidden="true">
+    <div class="vf-dot"></div>
+    <div class="vf-word"><span style="--d:-1.5;--y:-1">V</span><span style="--d:-.5;--y:1">o</span><span style="--d:.5;--y:-1">i</span><span style="--d:1.5;--y:1">d</span></div>
+    <div class="vf-lines"><p style="animation-delay:5.2s">No light.</p><p style="animation-delay:7.2s">No direction.</p><p style="animation-delay:9.2s">No weight.</p><p style="animation-delay:11.2s">No one.</p></div>
+  </div>
   <div id="screenFlash" aria-hidden="true"></div>
 
   <script>
@@ -980,6 +1017,7 @@
       { id: 'badat', title: 'What I’m bad at', kicker: 'Bug', size: 'md', dist: 950, theta: 5.8, body: "Small talk, Sports, chilling, learning languages" },
       // Portal
       { id: 'food', title: 'Food', kicker: 'Fuel', size: 'sm', dist: 480, theta: 4.0, body: "Persian kebab · Beef stroganoff" },
+      { id: 'premise', title: 'Premise', kicker: 'Roots', size: 'sm', dist: 700, theta: 5.2, body: "One human psychologist. One human information technologist." },
       { id: 'sports', title: 'Sports', kicker: 'Tribe', size: 'sm', dist: 500, theta: 2.2, body: "Ping-pong · Volleyball · Basketball" },
       { id: 'portal-down', type: 'portal-down', dist: 280, theta: 4.2 }
     ];
@@ -1348,6 +1386,48 @@
         }
       }
     }
+    /* ------------------------------------------------------------------
+       ENGULF. Over its last stretch a black hole's darkness spreads from the hole across the whole screen (a single
+       compositor-only circle). When everything is black the Void scene plays, then the layer starts over, small hole again.
+    ------------------------------------------------------------------ */
+    const veilEl = document.getElementById('veil'), vfEl = document.getElementById('voidfall');
+    let veilK = -1, veilX = 0, veilY = 0, vfBusy = false, vfTimers = [], vfT0 = 0, vfWasPaused = false;
+    function hideVeil() { if (veilK !== -1) { veilK = -1; veilEl.style.opacity = '0'; } }
+    function engulfStep(age, bh) {
+      if (vfBusy) return;
+      const d = state.layerIndex === 1 ? PORTAL_GROWTH_MIDDLE_BLACK : PORTAL_GROWTH_SURFACE;
+      const p = clamp((age / d - 0.75) / 0.25, 0, 1);
+      if (p <= 0) { hideVeil(); return; }
+      const sx = state.cx + bh.x * state.scale, sy = state.cy + bh.y * state.scale;
+      const maxR = Math.max(Math.hypot(sx, sy), Math.hypot(VW - sx, sy), Math.hypot(sx, VH - sy), Math.hypot(VW - sx, VH - sy)) * 1.05;
+      const r0 = bh.rad * state.scale * 1.2, e = p;
+      const k = (r0 + (maxR - r0) * e) / 35;
+      if (Math.abs(k - veilK) > Math.max(veilK, 1) * 0.004 || Math.abs(sx - veilX) > 1 || Math.abs(sy - veilY) > 1) {
+        veilK = k; veilX = sx; veilY = sy;
+        veilEl.style.transform = `translate(${(sx - 50).toFixed(1)}px, ${(sy - 50).toFixed(1)}px) scale(${k.toFixed(3)})`;
+        veilEl.style.opacity = Math.min(1, p * 6).toFixed(2);
+      }
+      if (p >= 1 && !zOpen && !modal.classList.contains('open')) startVoid();
+    }
+    function vfAfter(fn, ms) { vfTimers.push(setTimeout(fn, ms)); }
+    function startVoid() {
+      vfBusy = true; vfT0 = performance.now(); vfWasPaused = state.paused;
+      veilEl.style.opacity = '1';
+      state.paused = true;
+      vfEl.classList.remove('end'); vfEl.classList.add('on');
+      vfAfter(voidRestart, 14500);
+    }
+    function voidRestart() {
+      vfTimers.forEach(clearTimeout); vfTimers = [];
+      state.layerStartTime = Date.now();
+      state.nodes.forEach(n => { n.f = 0; });
+      resetGrav(); hideVeil();
+      state.paused = vfWasPaused;
+      vfEl.classList.add('end');
+      vfAfter(() => { vfEl.classList.remove('on', 'end'); vfBusy = false; }, 3100);
+    }
+    vfEl.addEventListener('pointerdown', () => { if (vfEl.classList.contains('on') && !vfEl.classList.contains('end') && performance.now() - vfT0 > 6000) voidRestart(); });
+
     // which node the pointer is over (tracked by events; asking the DOM with :hover every tick forces a style recalculation)
     let hoverNode = null;
     document.addEventListener('pointerover', e => { hoverNode = e.target.closest ? e.target.closest('.node') : null; }, { passive: true });
@@ -1374,6 +1454,7 @@
           state.bh = (hole && hole.sn !== undefined) ? { x: hole.x, y: hole.y, sn: hole.sn, rad: 70 * (hole.baseScale || .3) } : null;
           const bh = state.bh;
           updateGrav(bh, state.layerIndex, dt);
+          if (bh && !document.body.classList.contains('warping')) engulfStep(age, bh); else if (!vfBusy) hideVeil();
 
           state.nodes.forEach((n, i) => {
             const depthFactor = state.speedFactor;
@@ -1543,6 +1624,7 @@
       if (targetIndex === 2) zFetch().catch(() => {});   // warm the file while the player is in the void
       viewport.classList.add('locked');
       document.body.classList.add('warping');
+      hideVeil();
       state.paused = true;
 
       // Tint the warp glow toward the layer we're heading into
@@ -2308,7 +2390,7 @@
   <main id="seo" class="sr-only">
     <h1>Alireza Moazen</h1>
     <p>An interactive map of identity by Alireza Moazen, based in Hamburg, Germany. Research interests: AI, neuroengineering, biogerontology, neuroscience, philosophy, physics and robotics. Plain-text version: <a href="/about.html">about</a>.</p>
-    <dl><dt>Research Interest</dt><dd>AI. Neuroengineering. Biogerontology. Neuroscience. Philosophy. Physics. Robotics.</dd><dt>Ideas</dt><dd>The tera-human is the next step—urgently, before we reach AGI.</dd><dt>Origin</dt><dd>Shiraz, c.2000. Ankara intervened. Hamburg persists.</dd><dt>Current Location</dt><dd>Hamburg, Germany. 53.5488° N, 9.9872° E.</dd><dt>Languages</dt><dd>Persian, English, German. Loading: Chinese, French, Arabic.</dd><dt>Hobbies</dt><dd>Anime. Tech exploration. Scientific and philosophical literature. Games with depth. Long discussions on philosophy and science. Ping-pong. Basketball.</dd><dt>Favorite Books</dt><dd>Yalom: Schopenhauer, Nietzsche, Harari: Sapiens, Homo Deus, Sienkiewicz: Quo Vadis, Freud: Moses and Monotheism</dd><dt>Authors</dt><dd>Yuval Noah Harari, Friedrich Nietzsche, Arthur Schopenhauer, Irvin D. Yalom</dd><dt>Music</dt><dd>Travis Scott · Marc Rebillet · Parsalip · Jamule · Kendrick Lamar · Saint Levant · 21 Savage · Stromae.</dd><dt>Games</dt><dd>Detroit: Become Human · Warhammer · General · OGame</dd><dt>Sports</dt><dd>Ping-pong · Volleyball · Basketball</dd><dt>Food</dt><dd>Persian kebab · Beef stroganoff</dd><dt>MBTI</dt><dd>INTJ. Mild Introvert · Intuitive · Thinking · Mild Judging.</dd><dt>What I&#x27;m bad at</dt><dd>Small talk, Sports, chilling, learning languages</dd></dl>
+    <dl><dt>Research Interest</dt><dd>AI. Neuroengineering. Biogerontology. Neuroscience. Philosophy. Physics. Robotics.</dd><dt>Ideas</dt><dd>The tera-human is the next step—urgently, before we reach AGI.</dd><dt>Origin</dt><dd>Shiraz, c.2000. Ankara intervened. Hamburg persists.</dd><dt>Premise</dt><dd>One human psychologist. One human information technologist.</dd><dt>Current Location</dt><dd>Hamburg, Germany. 53.5488° N, 9.9872° E.</dd><dt>Languages</dt><dd>Persian, English, German. Loading: Chinese, French, Arabic.</dd><dt>Hobbies</dt><dd>Anime. Tech exploration. Scientific and philosophical literature. Games with depth. Long discussions on philosophy and science. Ping-pong. Basketball.</dd><dt>Favorite Books</dt><dd>Yalom: Schopenhauer, Nietzsche, Harari: Sapiens, Homo Deus, Sienkiewicz: Quo Vadis, Freud: Moses and Monotheism</dd><dt>Authors</dt><dd>Yuval Noah Harari, Friedrich Nietzsche, Arthur Schopenhauer, Irvin D. Yalom</dd><dt>Music</dt><dd>Travis Scott · Marc Rebillet · Parsalip · Jamule · Kendrick Lamar · Saint Levant · 21 Savage · Stromae.</dd><dt>Games</dt><dd>Detroit: Become Human · Warhammer · General · OGame</dd><dt>Sports</dt><dd>Ping-pong · Volleyball · Basketball</dd><dt>Food</dt><dd>Persian kebab · Beef stroganoff</dd><dt>MBTI</dt><dd>INTJ. Mild Introvert · Intuitive · Thinking · Mild Judging.</dd><dt>What I&#x27;m bad at</dt><dd>Small talk, Sports, chilling, learning languages</dd></dl>
     <h2>Find me</h2>
     <ul><li><a href="https://www.linkedin.com/in/alireza-moazen-323ab4244" rel="me noopener">LinkedIn</a></li><li><a href="https://youtube.com/@alireza.moazen" rel="me noopener">YouTube</a></li><li><a href="https://www.researchgate.net/profile/Alireza-Moazzenjahromifard" rel="me noopener">ResearchGate</a></li><li><a href="https://t.me/ThoughtHub" rel="me noopener">Telegram</a></li></ul>
   </main>
