@@ -7,7 +7,8 @@ A static personal website for [alirezamoazen.com](https://alirezamoazen.com), bu
 - `index.html` — the full website source for the homepage.
 - `about.html` — plain-text version of the same content (for people, search engines and AI crawlers).
 - `robots.txt`, `sitemap.xml`, `llms.txt`, `og-image.png` — discoverability and link previews.
-- `sig.dat` — encrypted data for the last layer. It is fetched and decrypted only when that layer is opened.
+- `.htaccess` — security headers and caching (Apache/LiteSpeed hosts).
+- favicon and manifest files, plus an IndexNow key file.
 
 ## Branches
 
@@ -36,15 +37,6 @@ To publish the website:
 - Deploy the repository to any static hosting service.
 - If using GitHub Pages, deploy from the `main` branch or configured publishing branch.
 
-## Important notes
-
-- The page references `/favicon.ico`. If you want the favicon to load correctly, add a `favicon.ico` file to the repository root or update the path in `index.html`.
-- If you want to use GitHub Pages with the custom domain `alirezamoazen.com`, add a `CNAME` file containing:
-
-  ```text
-  alirezamoazen.com
-  ```
-
 ## Contributing
 
 Contributions are welcome. Please open an issue or submit a pull request for any improvements, fixes, or updates.
@@ -53,5 +45,3 @@ Contributions are welcome. Please open an issue or submit a pull request for any
 
 This project is licensed under the MIT License.
 See the `LICENSE` file for details.
-
-<!-- deploy check 18:58:30 -->

@@ -1,0 +1,34 @@
+# Safe, module-guarded rules. Every block is skipped if its module is missing, so none of this can take the site down.
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+
+  # pages: always revalidate so edits show up at once; images and icons: cache a month
+  <FilesMatch "\.(html|txt|xml|webmanifest)$">
+    Header set Cache-Control "public, max-age=0, must-revalidate"
+  </FilesMatch>
+  <FilesMatch "\.(png|ico|svg)$">
+    Header set Cache-Control "public, max-age=2592000"
+  </FilesMatch>
+  <FilesMatch "^fx\.bin$">
+    Header set Cache-Control "no-cache"
+    Header set X-Robots-Tag "noindex, noarchive, nosnippet"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json application/ld+json application/xml image/svg+xml
+</IfModule>
+
+# The encrypted asset is for the page itself: browsers mark its request as same-origin, direct downloads and scrapers do not.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP:Sec-Fetch-Site} !^same-origin$ [NC]
+  RewriteCond %{HTTP_REFERER} !^https?://([a-z0-9-]+\.)*alirezamoazen[a-z0-9.-]*(:[0-9]+)?(/|$) [NC]
+  RewriteRule ^fx\.bin$ - [F,L]
+</IfModule>
