@@ -1,6 +1,6 @@
 # Alireza Moazen
 
-> Personal site of Alireza Moazen, based in Hamburg, Germany: DevOps, AI, and electronics. The main page is an interactive map; the plain-text version is below.
+> Personal site of Alireza Moazen, based in Hamburg, Germany: DevOps, AI, electrical engineering and neuroengineering. The main page is an interactive map; the plain-text version is below.
 
 ## Pages
 
@@ -9,7 +9,7 @@
 
 ## Profile
 
-- Professional Focus: DevOps. AI. Electronics.
+- Professional Focus: DevOps, AI, electrical engineering and neuroengineering.
 - Ideas: The tera-human is the next step—urgently, before we reach AGI.
 - Origin: Shiraz, c.2000. Ankara intervened. Hamburg persists.
 - Premise: One human psychologist. One human information technologist.
