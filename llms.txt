@@ -1,6 +1,6 @@
 # Alireza Moazen
 
-> Personal site of Alireza Moazen, based in Hamburg, Germany: AI, neuroengineering, biogerontology, neuroscience, philosophy, physics, robotics. The main page is an interactive map; the plain-text version is below.
+> Personal site of Alireza Moazen, based in Hamburg, Germany: DevOps, AI, and electronics. The main page is an interactive map; the plain-text version is below.
 
 ## Pages
 
@@ -9,13 +9,13 @@
 
 ## Profile
 
-- Research Interest: AI. Neuroengineering. Biogerontology. Neuroscience. Philosophy. Physics. Robotics.
+- Professional Focus: DevOps. AI. Electronics.
 - Ideas: The tera-human is the next step—urgently, before we reach AGI.
 - Origin: Shiraz, c.2000. Ankara intervened. Hamburg persists.
 - Premise: One human psychologist. One human information technologist.
 - Current Location: Hamburg, Germany. 53.5488° N, 9.9872° E.
 - Languages: Persian, English, German. Loading: Chinese, French, Arabic.
-- Hobbies: Anime. Tech exploration. Scientific and philosophical literature. Games with depth. Long discussions on philosophy and science. Ping-pong. Basketball.
+- Hobbies: Anime. Tech exploration. Scientific and philosophical literature. Games with depth. Personal interests in philosophy, psychology, and science. Ping-pong. Basketball.
 - Favorite Books: Yalom: Schopenhauer, Nietzsche, Harari: Sapiens, Homo Deus, Sienkiewicz: Quo Vadis, Freud: Moses and Monotheism
 - Authors: Yuval Noah Harari, Friedrich Nietzsche, Arthur Schopenhauer, Irvin D. Yalom
 - Music: Travis Scott · Marc Rebillet · Parsalip · Jamule · Kendrick Lamar · Saint Levant · 21 Savage · Stromae.
@@ -36,4 +36,4 @@
 
 - [Sitemap](https://alirezamoazen.com/sitemap.xml)
 
-Last updated: 2026-10-01. Primary language: English. Contact and profiles: see Links above.
+Last updated: 2026-10-24. Primary language: English. Contact and profiles: see Links above.
