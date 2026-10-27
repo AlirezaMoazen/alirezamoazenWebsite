@@ -780,6 +780,8 @@
       @keyframes vfLineR { 0% { opacity: 0; } 30%, 65% { opacity: .9; } 100% { opacity: 0; } }
     }
 
+    .connection-line { animation: none; }
+
     /* PERFORMANCE: phones / touch devices. Live blur and big soft shadows on every moving node
        are the most expensive things on this page, so they are replaced by cheap equivalents. */
     @media (max-width: 720px), (pointer: coarse) {
@@ -787,6 +789,8 @@
       .node:not(.portal-node):not(.center-node):not(.portal-mote) { background: rgba(14,14,18,0.78); }
       #star-canvas { mix-blend-mode: normal; }
       .warp { filter: none; }
+      .bh-d { animation: none; }
+      .wfx, .wfx * { animation-play-state: paused !important; }
     }
     /* ADAPTIVE QUALITY: set by the frame-rate governor in the script, only on devices that cannot hold ~30 fps.
        Level 1 drops the live blur and the black hole's orbiting dashes; level 2 also stills the war flicker. Ships stay. */
@@ -1404,11 +1408,14 @@
     let VW = innerWidth, VH = innerHeight;
     addEventListener('resize', () => { VW = innerWidth; VH = innerHeight; });
     const LITE = matchMedia('(max-width: 720px), (pointer: coarse)').matches;
-    let LITE_LINES = LITE ? 400 : 200, LOOP_MS = 30, PERF = 0;
-    let lastLoopT = 0, lastLineT = 0, lastSnT = 0;
+    const REDUCE_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const MOTION = REDUCE_MOTION ? 0 : (LITE ? 0.35 : 0.7);
+    let LITE_LINES = LITE ? 500 : 250, LOOP_MS = 30, PERF = 0;
+    let lastLoopT = 0, lastLineT = 0, lastSnT = 0, lastUiT = 0;
     function loop() {
       // Nodes drift well under a pixel per frame, so ~30 Hz is visually identical to 60 Hz and half the work.
       // Positions go through the compositor-only `translate` property (no layout); connection lines refresh at ~10 Hz.
+      if (document.hidden) { requestAnimationFrame(loop); return; }
       if (!state.paused) {
         const tNow = performance.now();
         if (tNow - lastLoopT >= LOOP_MS) {
@@ -1427,7 +1434,7 @@
 
           state.nodes.forEach((n, i) => {
             const depthFactor = state.speedFactor;
-            let speed = n.baseSpeed * depthFactor;
+            let speed = n.baseSpeed * depthFactor * MOTION;
             if (n.hover) speed *= 0.08;
             let rho = 0, near = 0;
             if (bh && !n.type) {                     // distance now (previous frame) drives time dilation
@@ -1438,9 +1445,9 @@
 
             n.angle += speed * 0.006 * (dt / 16.667);
 
-            // FLOAT LOGIC (Increased amplitude for visual shake)
-            const floatX = Math.sin((now * 0.0015) + n.floatOffset) * 12;
-            const floatY = Math.cos((now * 0.0012) + n.floatOffset) * 12;
+            // Keep the drift gentle, especially on touch devices.
+            const floatX = Math.sin((now * 0.0015) + n.floatOffset) * 12 * MOTION;
+            const floatY = Math.cos((now * 0.0012) + n.floatOffset) * 12 * MOTION;
 
             n.x = CW + (Math.cos(n.angle) * n.dist) + floatX;
             n.y = CH + (Math.sin(n.angle) * n.dist) + floatY;
@@ -1528,9 +1535,10 @@
         }
       }
 
-      updateSignalHint();
-      updateHUD();
-      updateMinimap();
+      const uiNow = performance.now();
+      if (uiNow - lastUiT >= 100) {
+        updateSignalHint(); updateHUD(); updateMinimap(); lastUiT = uiNow;
+      }
       requestAnimationFrame(loop);
     }
 
@@ -1672,7 +1680,7 @@
       resizeCanvas();
       window.addEventListener('resize', resizeCanvas);
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const count = reduce ? 120 : (window.innerWidth < 720 ? 150 : 350);
+      const count = reduce ? 80 : (LITE ? 90 : 240);
       for (let i = 0; i < count; i++) {
         stars.push({
           x: Math.random() * width,
@@ -1682,20 +1690,23 @@
           tw: reduce ? 0 : (Math.random() * 0.012)
         });
       }
-      // Twinkle is slow: redraw the starfield only when the camera moved, while warping, or every few frames.
-      let since = 0, lastCx = NaN, lastCy = NaN;
-      const every0 = window.innerWidth < 720 ? 4 : 3;
-      function tick(){
-        since++;
-        const every = (state.layerIndex === 2 ? 2 : every0) + PERF * 2;
-        if (warpSpeed > 0 || state.cx !== lastCx || state.cy !== lastCy || since >= every) {
-          lastCx = state.cx; lastCy = state.cy;
-          drawStars(!reduce && !state.paused, since); since = 0;
+      // Use elapsed time, so 90/120 Hz screens do not multiply background work.
+      let lastDraw = 0, lastCx = NaN, lastCy = NaN, lastScale = NaN, lastLayer = -1, lastWidth = 0, lastHeight = 0;
+      function tick(now){
+        const cameraMoved = state.cx !== lastCx || state.cy !== lastCy || state.scale !== lastScale;
+        const interval = warpSpeed > 0 ? 30 : (LITE ? 100 : 80) + PERF * 50;
+        const animate = !reduce && !state.paused;
+        if (!document.hidden && ((cameraMoved && now - lastDraw >= 30) ||
+            state.layerIndex !== lastLayer || width !== lastWidth || height !== lastHeight ||
+            (animate && now - lastDraw >= interval))) {
+          const elapsed = lastDraw ? Math.min(now - lastDraw, 100) : 16.667;
+          lastCx = state.cx; lastCy = state.cy; lastScale = state.scale; lastLayer = state.layerIndex;
+          drawStars(animate, elapsed / 16.667); lastDraw = now; lastWidth = width; lastHeight = height;
         }
         requestAnimationFrame(tick);
       }
       requestAnimationFrame(tick);
-      if (!reduce) setInterval(spawnMeteor, window.innerWidth < 720 ? 420 : 210);
+      if (!reduce && !LITE) setInterval(spawnMeteor, 700);
     }
 
     function resizeCanvas(){ width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
@@ -1900,7 +1911,8 @@
     function buildDeepField(){
       if (DF.built) return; DF.built = true;
       const small = window.innerWidth < 720;
-      const sprites = [galaxySprite('spiral', 160, 11), galaxySprite('spiral', 160, 27), galaxySprite('edge', 160, 5), galaxySprite('elliptical', 128, 9), galaxySprite('spiral', 160, 73)];
+      const spriteSize = LITE ? 96 : 160;
+      const sprites = [galaxySprite('spiral', spriteSize, 11), galaxySprite('spiral', spriteSize, 27), galaxySprite('edge', spriteSize, 5), galaxySprite('elliptical', spriteSize * .8, 9), galaxySprite('spiral', spriteSize, 73)];
       // middle layer: a sky of galaxies at three depths (far = tiny + faint, near = a few resolved ones)
       addPlane('df-m', .11, 1000, 760, 3.2, .85, (g, w, h) => {
         const r = mulberry32(101), n = small ? 380 : 700; for (let i = 0; i < n; i++) farGalaxy(g, r() * w, r() * h, .8 + r() * 1.6, r);
@@ -2282,7 +2294,7 @@
       return mixc(col, [58, 74, 96], smooth(.8, .98, r) * .26);
     }
     function paintPlanet(el) {
-      const kind = el.dataset.pl, k = LITE ? .7 : 1, c = document.createElement('canvas'), g0 = (cv, w, h) => { cv.width = w; cv.height = h; return cv.getContext('2d'); };
+      const kind = el.dataset.pl, k = LITE ? .5 : 1, c = document.createElement('canvas'), g0 = (cv, w, h) => { cv.width = w; cv.height = h; return cv.getContext('2d'); };
       let g;
       if (kind === 'earth') {                            // ~34 css px wide on the map: planet + a moon
         const u = 2 * k; g = g0(c, Math.round(160 * u), Math.round(110 * u));
@@ -2353,6 +2365,7 @@
     init();
     collectGrav(); initVis();
     const idle = (fn, ms) => setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 1500 }) : fn()), ms);
+    if (LITE) setPerf(1);
     idle(initPlanets, 700);
     idle(buildDeepField, 600);
   </script>
