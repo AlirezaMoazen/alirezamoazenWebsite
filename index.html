@@ -790,14 +790,17 @@
       #star-canvas { mix-blend-mode: normal; }
       .warp { filter: none; }
       .bh-d { animation: none; }
-      .wfx, .wfx * { animation-play-state: paused !important; }
+      /* Keep combat live; save work on full-screen effects and fixed controls. */
+      body.layer-1 .vignette, body.layer-2 .vignette,
+      body.layer-2 .vignette::after { animation: none; }
+      .hud .btn, .hud .pill { backdrop-filter: none; -webkit-backdrop-filter: none; }
     }
     /* ADAPTIVE QUALITY: set by the frame-rate governor in the script, only on devices that cannot hold ~30 fps.
-       Level 1 drops the live blur and the black hole's orbiting dashes; level 2 also stills the war flicker. Ships stay. */
+       Level 1 drops live blur and orbiting dashes; level 2 stills non-combat scenery. Combat stays live. */
     body.perf-1 .node { backdrop-filter: none; -webkit-backdrop-filter: none; }
     body.perf-1 .node:not(.portal-node):not(.portal-mote):not(.center-node) { background: rgba(14,14,18,0.74); }
     body.perf-1 .bh-d { animation: none; }
-    body.perf-2 .wfx *, body.perf-2 .wfx { animation-play-state: paused !important; }
+    body.perf-2 .wfx:not(.war) *, body.perf-2 .wfx:not(.war) { animation-play-state: paused !important; }
     @media (prefers-reduced-motion: reduce) {
       .connection-line { animation: none; }
     }
@@ -1416,7 +1419,7 @@
       // Nodes drift well under a pixel per frame, so ~30 Hz is visually identical to 60 Hz and half the work.
       // Positions go through the compositor-only `translate` property (no layout); connection lines refresh at ~10 Hz.
       if (document.hidden) { requestAnimationFrame(loop); return; }
-      if (!state.paused) {
+      if (!state.paused && !state.drag) {
         const tNow = performance.now();
         if (tNow - lastLoopT >= LOOP_MS) {
           const dt = lastLoopT ? Math.min(tNow - lastLoopT, 100) : 33;
@@ -2335,7 +2338,7 @@
     }
 
     /* Anything that animates inside the world only runs while it is on screen (IntersectionObserver toggles .vis). */
-    const visIO = ('IntersectionObserver' in window) ? new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('vis', e.isIntersecting)), { rootMargin: '160px' }) : null;
+    const visIO = ('IntersectionObserver' in window) ? new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('vis', e.isIntersecting)), { rootMargin: LITE ? '32px' : '160px' }) : null;
     function watchVis(el) { if (visIO) visIO.observe(el); else el.classList.add('vis'); }
     function initVis() { document.querySelectorAll('.wfx:not(.limb)').forEach(watchVis); }
 
@@ -2379,3 +2382,4 @@
   <noscript><p style="position:relative;z-index:999;color:#ddd;padding:24px;font:16px system-ui">This site is an interactive map and needs JavaScript. A plain version is at <a style="color:#fff" href="/about.html">/about.html</a>.</p></noscript>
 </body>
 </html>
+
